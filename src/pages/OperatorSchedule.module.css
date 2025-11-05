@@ -1,0 +1,597 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Заголовок */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.addTeacherButton {
+  padding: 12px 24px;
+  background-color: #38BDF8;
+  border: none;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.addTeacherButton:hover {
+  background-color: #22A8DD;
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.viewToggle {
+  display: flex;
+  gap: 8px;
+  background-color: #1A2140;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.toggleButton {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #A5B4FC;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggleButton:hover {
+  color: #FFFFFF;
+}
+
+.toggleButtonActive {
+  background-color: #5B5FFF;
+  color: #FFFFFF;
+}
+
+.addButton {
+  padding: 12px 24px;
+  background-color: #5B5FFF;
+  border: none;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.addButton:hover {
+  background-color: #4A4FDD;
+}
+
+.calendarSection {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 16px;
+}
+
+/* Информационная карточка */
+.infoCard {
+  background-color: rgba(91, 95, 255, 0.08);
+  border: 1px solid rgba(91, 95, 255, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.infoText {
+  color: #A5B4FC;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.infoText strong {
+  color: #FFFFFF;
+}
+
+/* Информация о расписании */
+.scheduleInfo {
+  background-color: #1A2140;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.scheduleInfo p {
+  margin: 4px 0;
+  color: #A5B4FC;
+}
+
+.scheduleInfo strong {
+  color: #FFFFFF;
+  font-size: 16px;
+}
+
+/* Список слотов в модальном окне */
+.slotsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.slotItem {
+  padding: 12px;
+  background-color: #1A2140;
+  border-radius: 10px;
+}
+
+.slotDetails {
+  font-size: 13px;
+  color: #A5B4FC;
+  margin-top: 4px;
+}
+
+/* Предметы преподавателя */
+.subjectsSelector {
+  margin-bottom: 12px;
+}
+
+.selectedSubjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.subjectTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: rgba(91, 95, 255, 0.15);
+  border: 1px solid #5B5FFF;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #FFFFFF;
+}
+
+.removeSubject {
+  background: none;
+  border: none;
+  color: #A5B4FC;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.removeSubject:hover {
+  color: #FF6B6B;
+}
+
+/* Карточка с учётными данными */
+.credentialsCard {
+  background-color: #1A2140;
+  border: 2px solid #38BDF8;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.credentialsText {
+  font-size: 15px;
+  color: #FFFFFF;
+  margin: 12px 0;
+}
+
+.credentialsText code {
+  background-color: rgba(91, 95, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #5B5FFF;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.credentialsHint {
+  font-size: 13px;
+  color: #FF6B6B;
+  margin-top: 16px;
+  padding: 10px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border-radius: 8px;
+}
+
+/* Статистика */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.statValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #5B5FFF;
+  margin-bottom: 8px;
+}
+
+.statLabel {
+  font-size: 14px;
+  color: #A5B4FC;
+}
+
+/* Таблица */
+.tableCard {
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.tableTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 16px;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #1A2140;
+}
+
+.table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #A5B4FC;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.table th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.table td {
+  padding: 16px;
+  font-size: 14px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(91, 95, 255, 0.05);
+}
+
+.emptyRow {
+  text-align: center;
+  color: #A5B4FC;
+  padding: 40px !important;
+}
+
+.badgeFull {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid #FF6B6B;
+  border-radius: 8px;
+  color: #FF6B6B;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.badgeAvailable {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: rgba(56, 189, 248, 0.1);
+  border: 1px solid #38BDF8;
+  border-radius: 8px;
+  color: #38BDF8;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButton {
+  padding: 6px 10px;
+  background-color: #1A2140;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.actionButton:hover:not(:disabled) {
+  border-color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.1);
+}
+
+.actionButton:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.actionButtonDanger {
+  padding: 6px 10px;
+  background-color: #1A2140;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.actionButtonDanger:hover {
+  border-color: #FF6B6B;
+  background-color: rgba(255, 107, 107, 0.1);
+}
+
+/* Модальное окно */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modalContent {
+  background-color: #141A2F;
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 24px;
+}
+
+/* Форма */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #A5B4FC;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  padding: 12px 16px;
+  background-color: #1A2140;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  border-color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.05);
+}
+
+.input option {
+  background-color: #1A2140;
+  color: #FFFFFF;
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.cancelButton {
+  padding: 12px 24px;
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #A5B4FC;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.cancelButton:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.submitButton {
+  padding: 12px 24px;
+  background-color: #5B5FFF;
+  border: none;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.submitButton:hover {
+  background-color: #4A4FDD;
+}
+
+/* Информация о слоте */
+.slotInfo {
+  background-color: #1A2140;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.slotInfo p {
+  margin: 4px 0;
+  color: #A5B4FC;
+}
+
+.slotInfo strong {
+  color: #FFFFFF;
+  font-size: 16px;
+}
+
+/* Список студентов */
+.studentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.studentItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #1A2140;
+  border-radius: 12px;
+}
+
+.studentIcon {
+  font-size: 24px;
+}
+
+.studentInfo {
+  flex: 1;
+}
+
+.studentName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 2px;
+}
+
+.studentGroup {
+  font-size: 13px;
+  color: #A5B4FC;
+}
+
+.closeButton {
+  width: 100%;
+  padding: 12px;
+  background-color: #1A2140;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.closeButton:hover {
+  border-color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.1);
+}
+
+.emptyMessage {
+  text-align: center;
+  color: #A5B4FC;
+  padding: 20px;
+  font-size: 14px;
+}
+

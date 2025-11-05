@@ -1,0 +1,526 @@
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 24px;
+}
+
+/* Вкладки */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  background-color: #141A2F;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #A5B4FC;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: #FFFFFF;
+  background-color: rgba(91, 95, 255, 0.1);
+}
+
+.tabActive {
+  background-color: #5B5FFF;
+  color: #FFFFFF;
+}
+
+.tabContent {
+  min-height: 400px;
+}
+
+/* Статистика */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.statIcon {
+  font-size: 36px;
+}
+
+.statContent {
+  flex: 1;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #5B5FFF;
+  margin-bottom: 4px;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: #A5B4FC;
+}
+
+/* Сетка карточек */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.exportButton {
+  padding: 10px 18px;
+  background-color: #38BDF8;
+  border: none;
+  border-radius: 10px;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.exportButton:hover {
+  background-color: #22A8DD;
+  transform: translateY(-1px);
+}
+
+.cardWide {
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 24px;
+  grid-column: 1 / -1;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 20px;
+}
+
+/* Формы */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.infoText {
+  color: #A5B4FC;
+  font-size: 14px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background-color: #1A2140;
+  border-radius: 10px;
+}
+
+.infoText code {
+  background-color: rgba(91, 95, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #5B5FFF;
+  font-family: monospace;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #A5B4FC;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  padding: 12px 16px;
+  background-color: #1A2140;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  border-color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.05);
+}
+
+.input option {
+  background-color: #1A2140;
+}
+
+.submitButton {
+  padding: 12px 20px;
+  background-color: #5B5FFF;
+  border: none;
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.submitButton:hover {
+  background-color: #4A4FDD;
+}
+
+/* Текущие лимиты */
+.currentLimits {
+  padding: 16px;
+  background-color: #1A2140;
+  border-radius: 12px;
+}
+
+.currentLimitsTitle {
+  font-size: 13px;
+  color: #A5B4FC;
+  margin-bottom: 8px;
+}
+
+.currentLimitsValue {
+  font-size: 15px;
+  color: #FFFFFF;
+}
+
+.currentLimitsValue strong {
+  color: #38BDF8;
+  font-weight: 600;
+}
+
+/* Обёртка для select курса с кнопкой + */
+.courseSelectWrapper {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.courseSelectWrapper .input {
+  flex: 1;
+}
+
+.addCourseButton {
+  width: 44px;
+  height: 44px;
+  background-color: #38BDF8;
+  border: none;
+  border-radius: 10px;
+  color: #FFFFFF;
+  font-size: 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.addCourseButton:hover {
+  background-color: #22A8DD;
+  transform: scale(1.05);
+}
+
+/* Модальное окно */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modalContent {
+  background-color: #141A2F;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modalTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 24px;
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancelButton {
+  flex: 1;
+  padding: 12px;
+  background-color: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #A5B4FC;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancelButton:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+}
+
+/* Список курсов */
+.coursesList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.courseItem {
+  padding: 16px;
+  background-color: #1A2140;
+  border-radius: 12px;
+}
+
+.courseName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 12px;
+}
+
+.subjectsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subjectTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: rgba(91, 95, 255, 0.1);
+  border: 1px solid #5B5FFF;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #FFFFFF;
+}
+
+.deleteSubjectButton {
+  background: none;
+  border: none;
+  color: #A5B4FC;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.deleteSubjectButton:hover {
+  color: #FF6B6B;
+}
+
+/* Таблица студентов */
+.studentsTable {
+  overflow-x: auto;
+  margin-top: 20px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: #1A2140;
+}
+
+.table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #A5B4FC;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.table th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(91, 95, 255, 0.05);
+}
+
+.table code {
+  background-color: rgba(91, 95, 255, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #5B5FFF;
+}
+
+/* Статусы */
+.statusYes {
+  color: #38BDF8;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.statusNo {
+  color: #666B7F;
+  font-size: 18px;
+}
+
+/* Процентный badge */
+.percentBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  background-color: rgba(56, 189, 248, 0.15);
+  border-radius: 6px;
+  color: #38BDF8;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Аналитика по предметам */
+.subjectsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.subjectCard {
+  background-color: #1A2140;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.subjectName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 10px;
+}
+
+.subjectStat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #A5B4FC;
+  margin-bottom: 12px;
+}
+
+.subjectProgress {
+  height: 6px;
+  background-color: rgba(91, 95, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.subjectProgressBar {
+  height: 100%;
+  background: linear-gradient(90deg, #5B5FFF, #38BDF8);
+  transition: width 0.3s;
+}
+
+.subjectPercent {
+  font-size: 18px;
+  font-weight: 700;
+  color: #38BDF8;
+  text-align: center;
+}
+
+@media (max-width: 1024px) {
+  .formHorizontal {
+    grid-template-columns: 1fr;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+

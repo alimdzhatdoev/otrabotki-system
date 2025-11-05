@@ -1,0 +1,283 @@
+.container {
+  display: grid;
+  gap: 20px;
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+/* Контейнер на всю ширину (день не выбран) */
+.containerFullWidth {
+  grid-template-columns: 1fr;
+}
+
+/* Контейнер с двумя колонками (день выбран, показаны слоты) */
+.containerWithSlots {
+  grid-template-columns: 2fr 1fr;
+}
+
+/* Календарь */
+.calendarWrapper {
+  width: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.monthTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.navButton {
+  width: 36px;
+  height: 36px;
+  background-color: #1A2140;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  color: #A5B4FC;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.navButton:hover {
+  border-color: #5B5FFF;
+  color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.1);
+}
+
+.weekDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.weekDay {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #A5B4FC;
+  padding: 8px 4px;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.day {
+  aspect-ratio: 1;
+  background-color: rgba(26, 33, 64, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: all 0.2s;
+  position: relative;
+  padding: 8px 4px;
+  opacity: 0.5;
+}
+
+.dayEmpty {
+  aspect-ratio: 1;
+}
+
+.dayNumber {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666B7F;
+  margin-bottom: 4px;
+}
+
+.dayToday {
+  border-color: #38BDF8;
+  opacity: 1;
+}
+
+.dayToday .dayNumber {
+  color: #38BDF8;
+}
+
+.dayClickable {
+  cursor: pointer;
+}
+
+.dayClickable:hover {
+  border-color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.15);
+}
+
+.daySelected {
+  border-color: #5B5FFF !important;
+  background-color: rgba(91, 95, 255, 0.2) !important;
+  opacity: 1 !important;
+}
+
+.daySelected .dayNumber {
+  color: #5B5FFF;
+}
+
+/* Дни с доступными слотами - яркие и выделенные */
+.dayHasSlots {
+  background-color: #1A2140;
+  opacity: 1;
+  border-color: rgba(91, 95, 255, 0.3);
+}
+
+.dayHasSlots .dayNumber {
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.dayDots {
+  display: flex;
+  gap: 3px;
+  margin-top: auto;
+}
+
+.dayDot {
+  width: 4px;
+  height: 4px;
+  background-color: #5B5FFF;
+  border-radius: 50%;
+}
+
+/* Панель слотов */
+.slotsPanel {
+  background-color: #1A2140;
+  border-radius: 16px;
+  padding: 20px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slotsPanelTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 16px;
+}
+
+.slotsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.slotItem {
+  padding: 14px;
+  background-color: #141A2F;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.slotItemFull {
+  opacity: 0.6;
+}
+
+.slotItemBooked {
+  border-color: #38BDF8;
+  background-color: rgba(56, 189, 248, 0.05);
+}
+
+.slotInfo {
+  flex: 1;
+}
+
+.slotTime {
+  font-size: 14px;
+  color: #A5B4FC;
+  margin-bottom: 6px;
+}
+
+.slotSubject {
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 4px;
+}
+
+.slotTeacher {
+  font-size: 13px;
+  color: #A5B4FC;
+  margin-bottom: 6px;
+}
+
+.slotCapacity {
+  font-size: 13px;
+  color: #A5B4FC;
+}
+
+.slotButton {
+  padding: 8px 16px;
+  background-color: #5B5FFF;
+  border: none;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.slotButton:hover:not(:disabled) {
+  background-color: #4A4FDD;
+  transform: translateY(-1px);
+}
+
+.slotButton:disabled {
+  background-color: #1A2140;
+  color: #666B7F;
+  cursor: not-allowed;
+}
+
+.slotBooked {
+  padding: 6px 14px;
+  background-color: rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #38BDF8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+}
+
