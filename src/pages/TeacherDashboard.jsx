@@ -1,9 +1,8 @@
 // Компонент: Панель преподавателя для просмотра слотов и отметки посещаемости
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { users } from '../data/users';
-import { courses } from '../data/courses';
-import { initialSlots } from '../data/slots';
+import { getMySlots, getSlotStudents, updateAttendance, getStats } from '../api/teacherApi';
+import { getCourses } from '../api/commonApi';
 import Calendar from '../components/Calendar';
 import styles from './TeacherDashboard.module.css';
 
@@ -11,10 +10,12 @@ function TeacherDashboard() {
   const { currentUser } = useAuth();
   
   const [slots, setSlots] = useState([]);
-  const [attendance, setAttendance] = useState([]);
+  const [slotStudents, setSlotStudents] = useState({}); // { slotId: { students: [...] } }
   const [expandedSlot, setExpandedSlot] = useState(null);
-  const [viewMode, setViewMode] = useState('list'); // 'list' по умолчанию
-  const [todaySlotFound, setTodaySlotFound] = useState(false);
+  const [viewMode, setViewMode] = useState('list');
+  const [courses, setCourses] = useState([]);
+  const [stats, setStats] = useState({ totalSlots: 0, totalStudents: 0, totalAttended: 0, totalCompleted: 0 });
+  const [loading, setLoading] = useState(true);
   
   // Фильтры
   const [filters, setFilters] = useState({
@@ -24,139 +25,151 @@ function TeacherDashboard() {
 
   // Загрузка данных
   useEffect(() => {
-    const savedSlots = localStorage.getItem('slots');
-    const savedAttendance = localStorage.getItem('attendance');
+    loadData();
+  }, [currentUser, filters]);
+
+  const loadData = async () => {
+    if (!currentUser) return;
     
-    if (savedSlots) {
-      setSlots(JSON.parse(savedSlots));
-    } else {
-      setSlots(initialSlots);
+    try {
+      setLoading(true);
+      
+      // Загружаем курсы
+      const coursesData = await getCourses();
+      setCourses(coursesData);
+      
+      // Загружаем слоты
+      const slotsData = await getMySlots(filters);
+      setSlots(slotsData);
+      
+      // Загружаем статистику
+      const statsData = await getStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error('Ошибка загрузки данных:', err);
+    } finally {
+      setLoading(false);
     }
-    
-    if (savedAttendance) {
-      setAttendance(JSON.parse(savedAttendance));
-    }
-  }, []);
+  };
 
   // Автоматически раскрыть сегодняшнюю отработку
   useEffect(() => {
-    if (slots.length > 0 && currentUser && !todaySlotFound) {
+    if (slots.length > 0 && currentUser) {
       const today = new Date().toISOString().split('T')[0];
       const todaySlot = slots.find(slot => 
-        slot.teacherId === currentUser.id && 
         slot.date === today &&
-        slot.students.length > 0
+        slot.students && slot.students.length > 0
       );
       
-      if (todaySlot) {
+      if (todaySlot && !expandedSlot) {
         setExpandedSlot(todaySlot.id);
-        setTodaySlotFound(true);
       }
     }
-  }, [slots, currentUser, todaySlotFound]);
+  }, [slots, currentUser]);
 
   if (!currentUser || currentUser.role !== 'teacher') {
     return <div>Доступ запрещён</div>;
   }
 
-  // Получить слоты преподавателя с сортировкой от сегодня
-  const getMySlots = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // Получить студентов для слота
+  const getStudentsForSlot = async (slotId) => {
+    if (slotStudents[slotId]) {
+      return slotStudents[slotId].students || [];
+    }
     
-    return slots
-      .filter(slot => {
-        if (slot.teacherId !== currentUser.id) return false;
-        
-        if (filters.subject && slot.subject !== filters.subject) return false;
-        if (filters.course && slot.courseId !== parseInt(filters.course)) return false;
-        
-        return true;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        
-        // Сортируем от сегодня вперёд
-        return dateA - dateB;
-      });
+    try {
+      const data = await getSlotStudents(slotId);
+      setSlotStudents(prev => ({ ...prev, [slotId]: data }));
+      return data.students || [];
+    } catch (err) {
+      console.error('Ошибка загрузки студентов:', err);
+      return [];
+    }
   };
 
-  // Проверить посещаемость
-  const isAttended = (slotId, studentId) => {
-    const record = attendance.find(
-      a => a.slotId === slotId && a.studentId === studentId
-    );
-    return record ? record.attended : false;
-  };
-
-  // Проверить, отработал ли
-  const isCompleted = (slotId, studentId) => {
-    const record = attendance.find(
-      a => a.slotId === slotId && a.studentId === studentId
-    );
-    return record ? record.completed : false;
+  // Проверка, находится ли текущее время в промежутке времени отработки
+  const isSlotTimeActive = (slot) => {
+    const now = new Date();
+    
+    // Парсим дату слота
+    const slotDate = new Date(slot.date + 'T00:00:00');
+    const slotDateOnly = new Date(slotDate.getFullYear(), slotDate.getMonth(), slotDate.getDate());
+    
+    // Получаем сегодняшнюю дату (без времени)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Проверяем, что сегодняшняя дата совпадает с датой слота
+    if (slotDateOnly.getTime() !== today.getTime()) {
+      return false;
+    }
+    
+    // Парсим время начала и конца
+    const [hoursFrom, minutesFrom] = slot.timeFrom.split(':').map(Number);
+    const [hoursTo, minutesTo] = slot.timeTo.split(':').map(Number);
+    
+    // Создаем объекты Date для времени начала и конца
+    const slotStart = new Date(today);
+    slotStart.setHours(hoursFrom, minutesFrom, 0, 0);
+    
+    const slotEnd = new Date(today);
+    slotEnd.setHours(hoursTo, minutesTo, 0, 0);
+    
+    // Проверяем, что текущее время в промежутке [время начала, время конца]
+    return now >= slotStart && now <= slotEnd;
   };
 
   // Переключить посещаемость
-  const toggleAttendance = (slotId, studentId) => {
-    const existingIndex = attendance.findIndex(
-      a => a.slotId === slotId && a.studentId === studentId
-    );
-    
-    let newAttendance;
-    
-    if (existingIndex >= 0) {
-      newAttendance = [...attendance];
-      newAttendance[existingIndex] = {
-        ...newAttendance[existingIndex],
-        attended: !newAttendance[existingIndex].attended
-      };
-    } else {
-      newAttendance = [
-        ...attendance,
-        { slotId, studentId, attended: true, completed: false }
-      ];
+  const toggleAttendance = async (slotId, studentId, currentAttended, slot) => {
+    // Проверяем время
+    if (!isSlotTimeActive(slot)) {
+      alert('Можно отмечать посещаемость только во время отработки');
+      return;
     }
     
-    setAttendance(newAttendance);
-    localStorage.setItem('attendance', JSON.stringify(newAttendance));
+    try {
+      await updateAttendance(slotId, studentId, !currentAttended, undefined);
+      // Перезагружаем данные слота
+      const slotData = await getSlotStudents(slotId);
+      setSlotStudents(prev => ({
+        ...prev,
+        [slotId]: slotData
+      }));
+    } catch (err) {
+      alert(err.message || 'Ошибка обновления посещаемости');
+    }
   };
 
   // Переключить статус отработки
-  const toggleCompleted = (slotId, studentId) => {
-    const existingIndex = attendance.findIndex(
-      a => a.slotId === slotId && a.studentId === studentId
-    );
-    
-    let newAttendance;
-    
-    if (existingIndex >= 0) {
-      newAttendance = [...attendance];
-      newAttendance[existingIndex] = {
-        ...newAttendance[existingIndex],
-        completed: !newAttendance[existingIndex].completed
-      };
-    } else {
-      newAttendance = [
-        ...attendance,
-        { slotId, studentId, attended: false, completed: true }
-      ];
+  const toggleCompleted = async (slotId, studentId, currentCompleted, slot) => {
+    // Проверяем время
+    if (!isSlotTimeActive(slot)) {
+      alert('Можно отмечать отработку только во время отработки');
+      return;
     }
     
-    setAttendance(newAttendance);
-    localStorage.setItem('attendance', JSON.stringify(newAttendance));
+    try {
+      await updateAttendance(slotId, studentId, undefined, !currentCompleted);
+      // Перезагружаем данные слота
+      const slotData = await getSlotStudents(slotId);
+      setSlotStudents(prev => ({
+        ...prev,
+        [slotId]: slotData
+      }));
+    } catch (err) {
+      alert(err.message || 'Ошибка обновления статуса отработки');
+    }
   };
 
   // Получить статистику по слоту
   const getSlotStats = (slot) => {
-    const total = slot.students.length;
-    const attended = slot.students.filter(studentId => 
-      isAttended(slot.id, studentId)
-    ).length;
-    const completed = slot.students.filter(studentId =>
-      isCompleted(slot.id, studentId)
-    ).length;
+    const slotData = slotStudents[slot.id];
+    if (!slotData || !slotData.students) {
+      return { total: slot.students?.length || 0, attended: 0, completed: 0 };
+    }
+    
+    const total = slotData.students.length;
+    const attended = slotData.students.filter(s => s.attended).length;
+    const completed = slotData.students.filter(s => s.completed).length;
     
     return { total, attended, completed };
   };
@@ -167,17 +180,14 @@ function TeacherDashboard() {
     setViewMode('list');
   };
 
-  const mySlots = getMySlots();
+  const mySlots = slots;
   
-  // Статистика по всем слотам
-  const totalSlots = mySlots.length;
-  const totalStudents = mySlots.reduce((sum, s) => sum + s.students.length, 0);
-  const totalAttended = mySlots.reduce((sum, s) => {
-    return sum + s.students.filter(studentId => isAttended(s.id, studentId)).length;
-  }, 0);
-  const totalCompleted = mySlots.reduce((sum, s) => {
-    return sum + s.students.filter(studentId => isCompleted(s.id, studentId)).length;
-  }, 0);
+  // Загружаем студентов при раскрытии слота
+  useEffect(() => {
+    if (expandedSlot && !slotStudents[expandedSlot]) {
+      getStudentsForSlot(expandedSlot);
+    }
+  }, [expandedSlot]);
 
   return (
     <div className={styles.container}>
@@ -194,34 +204,34 @@ function TeacherDashboard() {
 
       {/* Статистика */}
       <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>📋</div>
-          <div className={styles.statContent}>
-            <div className={styles.statValue}>{totalSlots}</div>
-            <div className={styles.statLabel}>Моих слотов</div>
-          </div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>🎓</div>
-          <div className={styles.statContent}>
-            <div className={styles.statValue}>{totalStudents}</div>
-            <div className={styles.statLabel}>Записалось студентов</div>
-          </div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>✅</div>
-          <div className={styles.statContent}>
-            <div className={styles.statValue}>{totalAttended}</div>
-            <div className={styles.statLabel}>Присутствовало</div>
-          </div>
-        </div>
-        <div className={styles.statCard}>
-          <div className={styles.statIcon}>🎯</div>
-          <div className={styles.statContent}>
-            <div className={styles.statValue}>{totalCompleted}</div>
-            <div className={styles.statLabel}>Отработали</div>
-          </div>
-        </div>
+            <div className={styles.statCard}>
+              <div className={styles.statIcon}>📋</div>
+              <div className={styles.statContent}>
+                <div className={styles.statValue}>{stats.totalSlots}</div>
+                <div className={styles.statLabel}>Моих слотов</div>
+              </div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statIcon}>🎓</div>
+              <div className={styles.statContent}>
+                <div className={styles.statValue}>{stats.totalStudents}</div>
+                <div className={styles.statLabel}>Записалось студентов</div>
+              </div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statIcon}>✅</div>
+              <div className={styles.statContent}>
+                <div className={styles.statValue}>{stats.totalAttended}</div>
+                <div className={styles.statLabel}>Присутствовало</div>
+              </div>
+            </div>
+            <div className={styles.statCard}>
+              <div className={styles.statIcon}>🎯</div>
+              <div className={styles.statContent}>
+                <div className={styles.statValue}>{stats.totalCompleted}</div>
+                <div className={styles.statLabel}>Отработали</div>
+              </div>
+            </div>
       </div>
 
       {/* Переключатель режимов */}
@@ -353,51 +363,65 @@ function TeacherDashboard() {
                       {isExpanded && (
                         <div className={styles.studentsList}>
                           <h5 className={styles.studentsListTitle}>Записанные студенты:</h5>
-                          {slot.students.map(studentId => {
-                            const student = users.find(s => s.id === studentId);
-                            if (!student) return null;
+                          {(() => {
+                            const slotData = slotStudents[slot.id];
+                            const students = slotData?.students || [];
                             
-                            const attended = isAttended(slot.id, studentId);
-                            const completed = isCompleted(slot.id, studentId);
+                            if (students.length === 0) {
+                              return <p>Загрузка студентов...</p>;
+                            }
                             
-                            return (
-                              <div key={studentId} className={styles.studentItem}>
-                                <div className={styles.studentInfo}>
-                                  <span className={styles.studentIcon}>🎓</span>
-                                  <div className={styles.studentDetails}>
-                                    <div className={styles.studentName}>{student.fio}</div>
-                                    <div className={styles.studentGroup}>Группа {student.group}</div>
+                            return students.map(student => {
+                              return (
+                                <div key={student.id} className={styles.studentItem}>
+                                  <div className={styles.studentInfo}>
+                                    <span className={styles.studentIcon}>🎓</span>
+                                    <div className={styles.studentDetails}>
+                                      <div className={styles.studentName}>{student.fio}</div>
+                                      <div className={styles.studentGroup}>Группа {student.group}</div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className={styles.studentActions}>
+                                    {(() => {
+                                      const isTimeActive = isSlotTimeActive(slot);
+                                      return (
+                                        <>
+                                          <label className={styles.checkboxLabel}>
+                                            <input
+                                              type="checkbox"
+                                              checked={student.attended || false}
+                                              onChange={() => toggleAttendance(slot.id, student.id, student.attended, slot)}
+                                              disabled={!isTimeActive}
+                                              className={styles.checkbox}
+                                              title={!isTimeActive ? 'Можно отмечать только во время отработки' : ''}
+                                            />
+                                            <span className={styles.checkboxText}>
+                                              Пришёл
+                                            </span>
+                                          </label>
+                                          
+                                          <label className={styles.checkboxLabel}>
+                                            <input
+                                              type="checkbox"
+                                              checked={student.completed || false}
+                                              onChange={() => toggleCompleted(slot.id, student.id, student.completed, slot)}
+                                              disabled={!isTimeActive}
+                                              className={styles.checkbox}
+                                              title={!isTimeActive ? 'Можно отмечать только во время отработки' : ''}
+                                            />
+                                            <span className={styles.checkboxText}>
+                                              Отработал
+                                            </span>
+                                          </label>
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
-                                
-                                <div className={styles.studentActions}>
-                                  <label className={styles.checkboxLabel}>
-                                    <input
-                                      type="checkbox"
-                                      checked={attended}
-                                      onChange={() => toggleAttendance(slot.id, studentId)}
-                                      className={styles.checkbox}
-                                    />
-                                    <span className={styles.checkboxText}>
-                                      Пришёл
-                                    </span>
-                                  </label>
-                                  
-                                  <label className={styles.checkboxLabel}>
-                                    <input
-                                      type="checkbox"
-                                      checked={completed}
-                                      onChange={() => toggleCompleted(slot.id, studentId)}
-                                      className={styles.checkbox}
-                                    />
-                                    <span className={styles.checkboxText}>
-                                      Отработал
-                                    </span>
-                                  </label>
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            });
+                          })()}
                         </div>
                       )}
                     </div>

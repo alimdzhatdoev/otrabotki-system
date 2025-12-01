@@ -1,18 +1,26 @@
 // Компонент: Панель администратора с аналитикой и экспортом
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { courses as initialCourses } from '../data/courses';
-import { users } from '../data/users';
-import { initialLimits } from '../data/limits';
+import {
+  getAnalytics,
+  getUsers,
+  getLimits,
+  updateLimits,
+  getRequests
+} from '../api/adminApi';
 import styles from './AdminSettings.module.css';
 
 function AdminSettings() {
   const { currentUser } = useAuth();
-  const [limits, setLimits] = useState(initialLimits);
-  const [courses, setCourses] = useState(initialCourses);
-  const [slots, setSlots] = useState([]);
-  const [attendance, setAttendance] = useState([]);
-  const [activeTab, setActiveTab] = useState('analytics'); // 'analytics', 'teachers', 'requests', 'students', 'settings'
+  const [limits, setLimits] = useState({ maxPerDay: 1, maxPerWeek: 3 });
+  const [courses, setCourses] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [activeTab, setActiveTab] = useState('analytics');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Форма для лимитов
   const [limitForm, setLimitForm] = useState({
@@ -20,146 +28,66 @@ function AdminSettings() {
     maxPerWeek: 3
   });
 
-  // Форма для добавления предмета
-  const [subjectForm, setSubjectForm] = useState({
-    courseId: 1,
-    subject: ''
-  });
 
-  // Модалка для создания курса
-  const [showCourseModal, setShowCourseModal] = useState(false);
-  const [newCourseName, setNewCourseName] = useState('');
+  // Загрузка данных
+  useEffect(() => {
+    loadData();
+  }, [currentUser, activeTab]);
+
+  const loadData = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Загружаем аналитику
+      if (activeTab === 'analytics') {
+        const analyticsData = await getAnalytics();
+        setAnalytics(analyticsData);
+      }
+
+      // Загружаем лимиты
+      const limitsData = await getLimits();
+      setLimits(limitsData);
+      setLimitForm(limitsData);
+
+      // Загружаем курсы
+      const coursesData = await getCourses();
+      setCourses(coursesData);
+
+      // Загружаем пользователей
+      const usersData = await getUsers();
+      setStudents(usersData.filter(u => u.role === 'student'));
+      setTeachers(usersData.filter(u => u.role === 'teacher'));
+
+      // Загружаем заявки (всегда, так как они нужны для аналитики)
+      const requestsData = await getRequests();
+      setRequests(requestsData);
+    } catch (err) {
+      console.error('Ошибка загрузки данных:', err);
+      setError(err.message || 'Ошибка загрузки данных');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!currentUser || currentUser.role !== 'admin') {
     return <div>Доступ запрещён</div>;
   }
 
-  // Загрузка данных
-  useEffect(() => {
-    const savedLimits = localStorage.getItem('limits');
-    const savedSlots = localStorage.getItem('slots');
-    const savedAttendance = localStorage.getItem('attendance');
-    
-    if (savedLimits) {
-      const parsed = JSON.parse(savedLimits);
-      setLimits(parsed);
-      setLimitForm(parsed);
-    }
-    
-    if (savedSlots) {
-      setSlots(JSON.parse(savedSlots));
-    }
-    
-    if (savedAttendance) {
-      setAttendance(JSON.parse(savedAttendance));
-    }
-  }, []);
-
-  // Получаем данные
-  const students = users.filter(u => u.role === 'student');
-  const teachers = users.filter(u => u.role === 'teacher');
-  
-  // Заявки = записи студентов
-  const requests = slots.flatMap(slot => 
-    slot.students.map(studentId => ({
-      id: `${slot.id}_${studentId}`,
-      slotId: slot.id,
-      studentId,
-      subject: slot.subject,
-      date: slot.date,
-      timeFrom: slot.timeFrom,
-      timeTo: slot.timeTo,
-      teacherId: slot.teacherId,
-      courseId: slot.courseId
-    }))
-  );
-
   // Сохранение лимитов
-  const handleSaveLimits = (e) => {
+  const handleSaveLimits = async (e) => {
     e.preventDefault();
-    setLimits(limitForm);
-    localStorage.setItem('limits', JSON.stringify(limitForm));
-    alert('Лимиты обновлены!');
-  };
-
-  // Добавление предмета к курсу
-  const handleAddSubject = (e) => {
-    e.preventDefault();
-    
-    if (!subjectForm.subject.trim()) {
-      alert('Введите название предмета');
-      return;
+    try {
+      await updateLimits(limitForm);
+      setLimits(limitForm);
+      alert('Лимиты обновлены!');
+    } catch (err) {
+      alert(err.message || 'Ошибка при обновлении лимитов');
     }
-
-    const updatedCourses = courses.map(course => {
-      if (course.id === subjectForm.courseId) {
-        if (course.subjects.includes(subjectForm.subject)) {
-          alert('Такой предмет уже существует');
-          return course;
-        }
-        return {
-          ...course,
-          subjects: [...course.subjects, subjectForm.subject]
-        };
-      }
-      return course;
-    });
-
-    setCourses(updatedCourses);
-    setSubjectForm({ ...subjectForm, subject: '' });
-    alert('Предмет добавлен!');
   };
 
-  // Удаление предмета
-  const handleDeleteSubject = (courseId, subject) => {
-    if (!confirm(`Удалить предмет "${subject}"?`)) return;
-
-    const updatedCourses = courses.map(course => {
-      if (course.id === courseId) {
-        return {
-          ...course,
-          subjects: course.subjects.filter(s => s !== subject)
-        };
-      }
-      return course;
-    });
-
-    setCourses(updatedCourses);
-  };
-
-  // Добавление нового курса
-  const handleAddCourse = (e) => {
-    e.preventDefault();
-    
-    if (!newCourseName.trim()) {
-      alert('Введите название курса');
-      return;
-    }
-
-    const newCourse = {
-      id: courses.length > 0 ? Math.max(...courses.map(c => c.id)) + 1 : 1,
-      name: newCourseName.trim(),
-      subjects: []
-    };
-
-    const updatedCourses = [...courses, newCourse];
-    setCourses(updatedCourses);
-    
-    // Сохраняем в localStorage
-    localStorage.setItem('customCourses', JSON.stringify(updatedCourses));
-    
-    setNewCourseName('');
-    setShowCourseModal(false);
-    alert('Курс добавлен!');
-  };
-
-  // Загрузка кастомных курсов при монтировании
-  useEffect(() => {
-    const savedCourses = localStorage.getItem('customCourses');
-    if (savedCourses) {
-      setCourses(JSON.parse(savedCourses));
-    }
-  }, []);
 
   // Экспорт в CSV
   const exportToCSV = (data, filename) => {
@@ -223,58 +151,25 @@ function AdminSettings() {
     exportToCSV(data, 'students.csv');
   };
 
-  // Аналитика
-  const totalSlots = slots.length;
-  const totalRequests = requests.length;
-  const attendedCount = requests.filter(r => {
-    const att = attendance.find(a => a.slotId === r.slotId && a.studentId === r.studentId);
-    return att?.attended;
-  }).length;
-  const completedCount = requests.filter(r => {
-    const att = attendance.find(a => a.slotId === r.slotId && a.studentId === r.studentId);
-    return att?.completed;
-  }).length;
-  const attendanceRate = totalRequests > 0 ? Math.round((attendedCount / totalRequests) * 100) : 0;
-  const completionRate = totalRequests > 0 ? Math.round((completedCount / totalRequests) * 100) : 0;
+  // Аналитика (из API)
+  const totalSlots = analytics?.slots?.total || 0;
+  const totalRequests = analytics?.requests?.total || 0;
+  const attendanceRate = analytics?.requests?.attendanceRate || 0;
+  const completionRate = analytics?.requests?.completionRate || 0;
+  const teacherStats = analytics?.teacherStats || [];
+  const subjectStats = analytics?.subjectStats || {};
 
-  // Аналитика по преподавателям
-  const teacherStats = teachers.map(teacher => {
-    const teacherSlots = slots.filter(s => s.teacherId === teacher.id);
-    const teacherRequests = requests.filter(r => r.teacherId === teacher.id);
-    const teacherAttended = teacherRequests.filter(r => {
-      const att = attendance.find(a => a.slotId === r.slotId && a.studentId === r.studentId);
-      return att?.attended;
-    }).length;
-    const teacherCompleted = teacherRequests.filter(r => {
-      const att = attendance.find(a => a.slotId === r.slotId && a.studentId === r.studentId);
-      return att?.completed;
-    }).length;
-    
-    return {
-      teacher,
-      slotsCount: teacherSlots.length,
-      requestsCount: teacherRequests.length,
-      attendedCount: teacherAttended,
-      completedCount: teacherCompleted,
-      completionRate: teacherRequests.length > 0 ? Math.round((teacherCompleted / teacherRequests.length) * 100) : 0
-    };
-  });
-
-  // Аналитика по предметам
-  const subjectStats = {};
-  requests.forEach(r => {
-    if (!subjectStats[r.subject]) {
-      subjectStats[r.subject] = { total: 0, completed: 0 };
-    }
-    subjectStats[r.subject].total++;
-    const att = attendance.find(a => a.slotId === r.slotId && a.studentId === r.studentId);
-    if (att?.completed) {
-      subjectStats[r.subject].completed++;
-    }
-  });
+  if (loading && !analytics) {
+    return <div className={styles.container}>Загрузка...</div>;
+  }
 
   return (
     <div className={styles.container}>
+      {error && (
+        <div style={{ padding: '10px', background: '#fee', color: '#c00', marginBottom: '20px' }}>
+          Ошибка: {error}
+        </div>
+      )}
       <h1 className={styles.title}>Панель администратора</h1>
 
       {/* Вкладки */}
@@ -459,27 +354,23 @@ function AdminSettings() {
               </thead>
               <tbody>
                 {requests.map(request => {
-                  const student = students.find(s => s.id === request.studentId);
-                  const teacher = teachers.find(t => t.id === request.teacherId);
-                  const att = attendance.find(a => a.slotId === request.slotId && a.studentId === request.studentId);
-                  
                   return (
                     <tr key={request.id}>
-                      <td>{student?.fio}</td>
-                      <td>{student?.group}</td>
+                      <td>{request.student?.fio || ''}</td>
+                      <td>{request.student?.group || ''}</td>
                       <td>{request.subject}</td>
                       <td>{new Date(request.date).toLocaleDateString('ru-RU')}</td>
                       <td>{request.timeFrom} - {request.timeTo}</td>
-                      <td>{teacher?.fio}</td>
+                      <td>{request.teacher?.fio || ''}</td>
                       <td>
-                        {att?.attended ? (
+                        {request.attended ? (
                           <span className={styles.statusYes}>✓</span>
                         ) : (
                           <span className={styles.statusNo}>—</span>
                         )}
                       </td>
                       <td>
-                        {att?.completed ? (
+                        {request.completed ? (
                           <span className={styles.statusYes}>✓</span>
                         ) : (
                           <span className={styles.statusNo}>—</span>
@@ -570,109 +461,10 @@ function AdminSettings() {
               </div>
             </div>
 
-            {/* Курсы и предметы */}
-            <div className={styles.card}>
-              <h2 className={styles.cardTitle}>📚 Курсы и предметы</h2>
-              <form onSubmit={handleAddSubject} className={styles.form}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Курс</label>
-                  <div className={styles.courseSelectWrapper}>
-                    <select
-                      value={subjectForm.courseId}
-                      onChange={(e) => setSubjectForm({ ...subjectForm, courseId: parseInt(e.target.value) })}
-                      className={styles.input}
-                    >
-                      {courses.map(course => (
-                        <option key={course.id} value={course.id}>{course.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setShowCourseModal(true)}
-                      className={styles.addCourseButton}
-                      title="Добавить новый курс"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Новый предмет</label>
-                  <input
-                    type="text"
-                    placeholder="Название предмета"
-                    value={subjectForm.subject}
-                    onChange={(e) => setSubjectForm({ ...subjectForm, subject: e.target.value })}
-                    className={styles.input}
-                  />
-                </div>
-                <button type="submit" className={styles.submitButton}>
-                  Добавить предмет
-                </button>
-              </form>
-
-              <div className={styles.coursesList}>
-                {courses.map(course => (
-                  <div key={course.id} className={styles.courseItem}>
-                    <h3 className={styles.courseName}>{course.name}</h3>
-                    <div className={styles.subjectsList}>
-                      {course.subjects.map(subject => (
-                        <div key={subject} className={styles.subjectTag}>
-                          <span>{subject}</span>
-                          <button
-                            onClick={() => handleDeleteSubject(course.id, subject)}
-                            className={styles.deleteSubjectButton}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         )}
       </div>
 
-      {/* Модальное окно добавления курса */}
-      {showCourseModal && (
-        <div className={styles.modal} onClick={() => setShowCourseModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>Добавить новый курс</h2>
-            <form onSubmit={handleAddCourse} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Название курса</label>
-                <input
-                  type="text"
-                  placeholder="Например: 4 курс"
-                  value={newCourseName}
-                  onChange={(e) => setNewCourseName(e.target.value)}
-                  className={styles.input}
-                  autoFocus
-                  required
-                />
-              </div>
-              <div className={styles.formActions}>
-                <button
-                  type="button"
-                  onClick={() => setShowCourseModal(false)}
-                  className={styles.cancelButton}
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className={styles.submitButton}
-                >
-                  Создать курс
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

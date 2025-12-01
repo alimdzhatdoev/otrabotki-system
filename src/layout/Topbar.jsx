@@ -42,12 +42,23 @@ function Topbar() {
       <nav className={styles.nav}>
         <NavLink
           to={path}
+          end
           className={({ isActive }) =>
             isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem
           }
         >
           {label}
         </NavLink>
+        {currentUser.role === 'operator' && (
+          <NavLink
+            to="/dashboard/operator/courses"
+            className={({ isActive }) =>
+              isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem
+            }
+          >
+            Курсы и предметы
+          </NavLink>
+        )}
       </nav>
 
       <div className={styles.rightSection}>

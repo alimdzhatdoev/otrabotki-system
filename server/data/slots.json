@@ -1,0 +1,48 @@
+[
+  {
+    "id": "slot_1764607653907_329ikaadv",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-03",
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 10,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": [
+      "s_1764613223304_ac8j2ko8o"
+    ]
+  },
+  {
+    "id": "slot_1764607653907_mn1gofahr",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-10",
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 10,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764607653907_knoratm1b",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-17",
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 10,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764607653907_1q8tfmb48",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-24",
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 10,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  }
+]

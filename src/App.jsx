@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import MainLayout from './layout/MainLayout';
 import StudentDashboard from './pages/StudentDashboard';
 import OperatorSchedule from './pages/OperatorSchedule';
+import CoursesAndSubjects from './pages/CoursesAndSubjects';
 import AdminSettings from './pages/AdminSettings';
 import TeacherDashboard from './pages/TeacherDashboard';
 
@@ -92,6 +93,7 @@ function AppRoutes() {
         <Route path="student" element={<StudentDashboard />} />
         <Route path="teacher" element={<TeacherDashboard />} />
         <Route path="operator" element={<OperatorSchedule />} />
+        <Route path="operator/courses" element={<CoursesAndSubjects />} />
         <Route path="admin" element={<AdminSettings />} />
       </Route>
 

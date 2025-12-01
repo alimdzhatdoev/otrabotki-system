@@ -1,10 +1,8 @@
 // Компонент: Панель студента для записи на отработки
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { courses } from '../data/courses';
-import { users } from '../data/users';
-import { initialSlots } from '../data/slots';
-import { initialLimits } from '../data/limits';
+import { getAvailableSlots, bookSlot, cancelBooking, getMyBookings, getLimitsInfo } from '../api/studentApi';
+import { getCourses } from '../api/commonApi';
 import Calendar from '../components/Calendar';
 import styles from './StudentDashboard.module.css';
 
@@ -12,28 +10,49 @@ function StudentDashboard() {
   const { currentUser } = useAuth();
   
   const [slots, setSlots] = useState([]);
-  const [limits, setLimits] = useState(initialLimits);
+  const [myBookings, setMyBookings] = useState([]);
+  const [limits, setLimits] = useState({ maxPerDay: 1, maxPerWeek: 3 });
+  const [limitsCurrent, setLimitsCurrent] = useState({ today: 0, week: 0 });
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Загрузка данных из localStorage при монтировании
+  // Загрузка данных при монтировании
   useEffect(() => {
-    const savedSlots = localStorage.getItem('slots');
-    const savedLimits = localStorage.getItem('limits');
+    loadData();
+  }, [currentUser, selectedSubject]);
+
+  const loadData = async () => {
+    if (!currentUser) return;
     
-    if (savedSlots) {
-      setSlots(JSON.parse(savedSlots));
-    } else {
-      setSlots(initialSlots);
-      localStorage.setItem('slots', JSON.stringify(initialSlots));
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Загружаем курсы для получения предметов
+      const coursesData = await getCourses();
+      setCourses(coursesData);
+
+      // Загружаем доступные слоты
+      const slotsData = await getAvailableSlots({ subject: selectedSubject || undefined });
+      setSlots(slotsData);
+
+      // Загружаем мои записи
+      const bookingsData = await getMyBookings();
+      setMyBookings(bookingsData);
+
+      // Загружаем информацию о лимитах
+      const limitsData = await getLimitsInfo();
+      setLimits(limitsData.limits);
+      setLimitsCurrent(limitsData.current);
+    } catch (err) {
+      console.error('Ошибка загрузки данных:', err);
+      setError(err.message || 'Ошибка загрузки данных');
+    } finally {
+      setLoading(false);
     }
-    
-    if (savedLimits) {
-      setLimits(JSON.parse(savedLimits));
-    } else {
-      setLimits(initialLimits);
-      localStorage.setItem('limits', JSON.stringify(initialLimits));
-    }
-  }, []);
+  };
 
   if (!currentUser || currentUser.role !== 'student') {
     return <div>Доступ запрещён</div>;
@@ -42,110 +61,62 @@ function StudentDashboard() {
   // Получить курс студента
   const studentCourse = courses.find(c => c.id === currentUser.course);
   
-  // Фильтрация слотов
-  const getAvailableSlots = () => {
-    return slots.filter(slot => {
-      const matchesCourse = slot.courseId === currentUser.course;
-      const matchesSubject = !selectedSubject || slot.subject === selectedSubject;
-      return matchesCourse && matchesSubject;
-    });
-  };
-
-  // Получить мои записи
-  const getMyBookings = () => {
-    return slots.filter(slot => slot.students.includes(currentUser.id));
-  };
-
-  // Проверка лимитов
-  const checkLimits = (slotDate) => {
-    const myBookings = getMyBookings();
-    
-    // Проверка лимита в день
-    const bookingsOnDay = myBookings.filter(slot => slot.date === slotDate);
-    if (bookingsOnDay.length >= limits.maxPerDay) {
-      return { valid: false, message: `Превышен лимит записей в день (макс. ${limits.maxPerDay})` };
-    }
-    
-    // Проверка лимита в неделю
-    const slotDateObj = new Date(slotDate);
-    const weekStart = new Date(slotDateObj);
-    weekStart.setDate(slotDateObj.getDate() - slotDateObj.getDay());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    
-    const bookingsInWeek = myBookings.filter(slot => {
-      const d = new Date(slot.date);
-      return d >= weekStart && d <= weekEnd;
-    });
-    
-    if (bookingsInWeek.length >= limits.maxPerWeek) {
-      return { valid: false, message: `Превышен лимит записей в неделю (макс. ${limits.maxPerWeek})` };
-    }
-    
-    return { valid: true };
-  };
+  // Фильтрация слотов (уже отфильтрованы на бэкенде, но можно дополнительно)
+  const availableSlots = slots.filter(slot => {
+    const matchesSubject = !selectedSubject || slot.subject === selectedSubject;
+    return matchesSubject;
+  });
 
   // Запись на слот (вызывается из календаря)
-  const handleSlotSelect = (slot) => {
+  const handleSlotSelect = async (slot) => {
     // Проверка: слот уже заполнен
-    if (slot.students.length >= slot.capacity) {
+    if (slot.bookedCount >= slot.capacity) {
       alert('Все места заняты!');
       return;
     }
     
     // Проверка: студент уже записан
-    if (slot.students.includes(currentUser.id)) {
+    if (slot.isBooked) {
       alert('Вы уже записаны на эту отработку!');
       return;
     }
-    
-    // Проверка лимитов
-    const limitCheck = checkLimits(slot.date);
-    if (!limitCheck.valid) {
-      alert(limitCheck.message);
-      return;
+
+    try {
+      await bookSlot(slot.id);
+      alert('Вы успешно записались на отработку!');
+      // Перезагружаем данные
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Ошибка при записи на слот');
     }
-    
-    // Запись студента
-    const updatedSlots = slots.map(s => {
-      if (s.id === slot.id) {
-        return {
-          ...s,
-          students: [...s.students, currentUser.id]
-        };
-      }
-      return s;
-    });
-    
-    setSlots(updatedSlots);
-    localStorage.setItem('slots', JSON.stringify(updatedSlots));
-    alert('Вы успешно записались на отработку!');
   };
 
   // Отмена записи
-  const cancelBooking = (slotId) => {
+  const handleCancelBooking = async (slotId) => {
     if (!confirm('Отменить запись на эту отработку?')) return;
     
-    const updatedSlots = slots.map(s => {
-      if (s.id === slotId) {
-        return {
-          ...s,
-          students: s.students.filter(id => id !== currentUser.id)
-        };
-      }
-      return s;
-    });
-    
-    setSlots(updatedSlots);
-    localStorage.setItem('slots', JSON.stringify(updatedSlots));
-    alert('Запись отменена');
+    try {
+      await cancelBooking(slotId);
+      alert('Запись отменена');
+      // Перезагружаем данные
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Ошибка при отмене записи');
+    }
   };
 
-  const availableSlots = getAvailableSlots();
-  const myBookings = getMyBookings();
+  if (loading && slots.length === 0) {
+    return <div className={styles.container}>Загрузка...</div>;
+  }
 
   return (
     <div className={styles.container}>
+      {error && (
+        <div style={{ padding: '10px', background: '#fee', color: '#c00', marginBottom: '20px' }}>
+          Ошибка: {error}
+        </div>
+      )}
+
       {/* Профиль студента */}
       <div className={styles.profileCard}>
         <div className={styles.profileIcon}>🎓</div>
@@ -159,25 +130,13 @@ function StudentDashboard() {
           <div className={styles.limitItem}>
             <span className={styles.limitLabel}>Записей сегодня</span>
             <span className={styles.limitValue}>
-              {myBookings.filter(s => s.date === new Date().toISOString().split('T')[0]).length}/{limits.maxPerDay}
+              {limitsCurrent.today}/{limits.maxPerDay}
             </span>
           </div>
           <div className={styles.limitItem}>
             <span className={styles.limitLabel}>Записей на неделю</span>
             <span className={styles.limitValue}>
-              {/* Подсчёт записей на текущую неделю */}
-              {(() => {
-                const today = new Date();
-                const weekStart = new Date(today);
-                weekStart.setDate(today.getDate() - today.getDay());
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 6);
-                const count = myBookings.filter(slot => {
-                  const d = new Date(slot.date);
-                  return d >= weekStart && d <= weekEnd;
-                }).length;
-                return `${count}/${limits.maxPerWeek}`;
-              })()}
+              {limitsCurrent.week}/{limits.maxPerWeek}
             </span>
           </div>
         </div>
@@ -217,8 +176,6 @@ function StudentDashboard() {
             <p className={styles.emptyMessage}>У вас пока нет записей</p>
           ) : (
             myBookings.map(slot => {
-              const teacher = users.find(t => t.id === slot.teacherId);
-              
               return (
                 <div key={slot.id} className={styles.bookingCard}>
                   <div className={styles.bookingInfo}>
@@ -226,11 +183,11 @@ function StudentDashboard() {
                     <div className={styles.bookingDetails}>
                       <span>📅 {new Date(slot.date).toLocaleDateString('ru-RU')}</span>
                       <span>🕐 {slot.timeFrom} - {slot.timeTo}</span>
-                      <span>👨‍🏫 {teacher?.fio}</span>
+                      <span>👨‍🏫 {slot.teacher?.fio || 'Не указан'}</span>
                     </div>
                   </div>
                   <button
-                    onClick={() => cancelBooking(slot.id)}
+                    onClick={() => handleCancelBooking(slot.id)}
                     className={styles.bookingCancelButton}
                   >
                     Отменить

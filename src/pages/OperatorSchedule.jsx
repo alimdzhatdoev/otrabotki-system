@@ -1,143 +1,91 @@
 // Компонент: Панель оператора для управления расписаниями и слотами
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { courses } from '../data/courses';
-import { users } from '../data/users';
-import { initialTeacherSchedules } from '../data/teacherSchedules';
+import { 
+  getTeacherSchedules, 
+  createTeacherSchedule, 
+  deleteTeacherSchedule,
+  getScheduleSlots,
+  generateSlots,
+  getAllSlots,
+  createTeacher,
+  getCourses,
+  getTeachers as getTeachersApi,
+  getSubjects
+} from '../api/operatorApi';
 import styles from './OperatorSchedule.module.css';
 
 function OperatorSchedule() {
   const { currentUser } = useAuth();
   const [schedules, setSchedules] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [newTeacher, setNewTeacher] = useState({ fio: '', subjects: [] });
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Форма нового расписания
   const [formData, setFormData] = useState({
     teacherId: '',
     subject: '',
     courseId: 1,
-    dayOfWeek: 1,
+    dayOfWeek: 0, // 0 = Понедельник (первый день недели)
     timeFrom: '',
     timeTo: '',
     capacity: 1
   });
 
-  // Загрузка данных из localStorage
+  // Загрузка данных
   useEffect(() => {
-    const savedSchedules = localStorage.getItem('teacherSchedules');
-    const savedSlots = localStorage.getItem('slots');
-    
-    if (savedSchedules) {
-      setSchedules(JSON.parse(savedSchedules));
-    } else {
-      setSchedules(initialTeacherSchedules);
-      localStorage.setItem('teacherSchedules', JSON.stringify(initialTeacherSchedules));
-    }
-    
-    if (savedSlots) {
-      setSlots(JSON.parse(savedSlots));
-    } else {
-      setSlots([]);
-    }
-  }, []);
+    loadData();
+  }, [currentUser]);
 
-  // Генерация слотов на основе расписаний (на следующие 4 недели)
-  useEffect(() => {
-    if (schedules.length === 0) return;
+  const loadData = async () => {
+    if (!currentUser) return;
     
-    const generatedSlots = [];
-    const today = new Date();
-    const weeksAhead = 4;
-    
-    schedules.forEach(schedule => {
-      for (let week = 0; week < weeksAhead; week++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + (schedule.dayOfWeek - today.getDay() + 7) % 7 + (week * 7));
-        
-        // Пропускаем прошлые даты
-        if (date < today) continue;
-        
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Проверяем, нет ли уже такого слота
-        const existingSlot = slots.find(s => 
-          s.date === dateStr && 
-          s.teacherId === schedule.teacherId &&
-          s.timeFrom === schedule.timeFrom
-        );
-        
-        if (!existingSlot) {
-          generatedSlots.push({
-            id: 'slot_' + Date.now() + '_' + Math.random(),
-            courseId: schedule.courseId,
-            subject: schedule.subject,
-            date: dateStr,
-            timeFrom: schedule.timeFrom,
-            timeTo: schedule.timeTo,
-            capacity: schedule.capacity,
-            teacherId: schedule.teacherId,
-            students: []
-          });
-        }
-      }
-    });
-    
-    if (generatedSlots.length > 0) {
-      const updatedSlots = [...slots, ...generatedSlots];
-      setSlots(updatedSlots);
-      localStorage.setItem('slots', JSON.stringify(updatedSlots));
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Загружаем курсы
+      const coursesData = await getCourses();
+      setCourses(coursesData);
+
+      // Загружаем предметы (для форм)
+      const subjectsData = await getSubjects();
+      setSubjects(subjectsData);
+
+      // Загружаем преподавателей
+      const teachersData = await getTeachersApi();
+      setTeachers(teachersData);
+
+      // Загружаем расписания
+      const schedulesData = await getTeacherSchedules();
+      setSchedules(schedulesData);
+
+      // Загружаем слоты
+      const slotsData = await getAllSlots();
+      setSlots(slotsData);
+    } catch (err) {
+      console.error('Ошибка загрузки данных:', err);
+      setError(err.message || 'Ошибка загрузки данных');
+    } finally {
+      setLoading(false);
     }
-  }, [schedules]);
+  };
 
   if (!currentUser || currentUser.role !== 'operator') {
     return <div>Доступ запрещён</div>;
   }
 
-  // Преподаватели из users (обновляемый список)
-  const [teachersList, setTeachersList] = useState([]);
-
-  useEffect(() => {
-    const savedUsers = localStorage.getItem('customUsers');
-    if (savedUsers) {
-      const customUsers = JSON.parse(savedUsers);
-      setTeachersList([...users.filter(u => u.role === 'teacher'), ...customUsers.filter(u => u.role === 'teacher')]);
-    } else {
-      setTeachersList(users.filter(u => u.role === 'teacher'));
-    }
-  }, []);
-
-  const teachers = teachersList;
-
-  // Транслитерация ФИО в логин
-  const transliterate = (text) => {
-    const ru = {
-      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
-      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-      'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-    };
-    
-    return text.toLowerCase().split('').map(char => ru[char] || char).join('').replace(/[^a-z]/g, '');
-  };
-
-  // Генерация пароля
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
-
   // Добавление преподавателя
-  const handleAddTeacher = (e) => {
+  const handleAddTeacher = async (e) => {
     e.preventDefault();
     
     if (!newTeacher.fio || newTeacher.subjects.length === 0) {
@@ -145,34 +93,27 @@ function OperatorSchedule() {
       return;
     }
 
-    // Формируем логин из ФИО (берём фамилию)
-    const parts = newTeacher.fio.split(' ');
-    const login = transliterate(parts[0]); // Фамилия
-    const password = generatePassword();
+    try {
+      const response = await createTeacher({
+        fio: newTeacher.fio,
+        subjects: newTeacher.subjects
+      });
 
-    const teacher = {
-      id: 't' + Date.now(),
-      login,
-      password,
-      role: 'teacher',
-      fio: newTeacher.fio,
-      subjects: newTeacher.subjects
-    };
+      // Показываем учётные данные
+      setGeneratedCredentials({
+        login: response.credentials.login,
+        password: response.credentials.password,
+        fio: newTeacher.fio
+      });
 
-    // Сохраняем в customUsers
-    const savedUsers = localStorage.getItem('customUsers');
-    const customUsers = savedUsers ? JSON.parse(savedUsers) : [];
-    customUsers.push(teacher);
-    localStorage.setItem('customUsers', JSON.stringify(customUsers));
-
-    // Обновляем список
-    setTeachersList([...teachersList, teacher]);
-
-    // Показываем учётные данные
-    setGeneratedCredentials({ login, password, fio: newTeacher.fio });
-    
-    // Сброс формы
-    setNewTeacher({ fio: '', subjects: [] });
+      // Обновляем список преподавателей
+      await loadData();
+      
+      // Сброс формы
+      setNewTeacher({ fio: '', subjects: [] });
+    } catch (err) {
+      alert(err.message || 'Ошибка при создании преподавателя');
+    }
   };
 
   // Добавить предмет к новому преподавателю
@@ -200,7 +141,7 @@ function OperatorSchedule() {
   };
 
   // Добавление нового расписания
-  const handleAddSchedule = (e) => {
+  const handleAddSchedule = async (e) => {
     e.preventDefault();
     
     // Валидация
@@ -209,53 +150,60 @@ function OperatorSchedule() {
       return;
     }
     
-    const newSchedule = {
-      id: 'ts' + Date.now(),
-      ...formData
-    };
-    
-    const updatedSchedules = [...schedules, newSchedule];
-    setSchedules(updatedSchedules);
-    localStorage.setItem('teacherSchedules', JSON.stringify(updatedSchedules));
-    
-    // Сброс формы
-    setFormData({
-      teacherId: '',
-      subject: '',
-      courseId: 1,
-      dayOfWeek: 1,
-      timeFrom: '',
-      timeTo: '',
-      capacity: 1
-    });
-    
-    setShowModal(false);
-    alert('Расписание добавлено! Слоты будут созданы автоматически.');
+    try {
+      await createTeacherSchedule(formData);
+      
+      // Генерируем слоты автоматически
+      await generateSlots(null, 4);
+      
+      // Перезагружаем данные
+      await loadData();
+      
+      // Сброс формы
+      setFormData({
+        teacherId: '',
+        subject: '',
+        courseId: 1,
+        dayOfWeek: 0, // 0 = Понедельник
+        timeFrom: '',
+        timeTo: '',
+        capacity: 1
+      });
+      
+      setShowModal(false);
+      alert('Расписание добавлено! Слоты созданы автоматически.');
+    } catch (err) {
+      alert(err.message || 'Ошибка при создании расписания');
+    }
   };
 
   // Удаление расписания
-  const handleDeleteSchedule = (scheduleId) => {
-    if (!confirm('Удалить это расписание? (Существующие слоты останутся)')) return;
+  const handleDeleteSchedule = async (scheduleId) => {
+    if (!confirm('Удалить это расписание? (Связанные слоты также будут удалены)')) return;
     
-    const updatedSchedules = schedules.filter(s => s.id !== scheduleId);
-    setSchedules(updatedSchedules);
-    localStorage.setItem('teacherSchedules', JSON.stringify(updatedSchedules));
+    try {
+      await deleteTeacherSchedule(scheduleId);
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Ошибка при удалении расписания');
+    }
   };
 
   // Просмотр слотов расписания
-  const handleViewSlots = (schedule) => {
-    const relatedSlots = slots.filter(s => 
-      s.teacherId === schedule.teacherId &&
-      s.subject === schedule.subject &&
-      s.timeFrom === schedule.timeFrom
-    );
-    setSelectedSchedule({ ...schedule, relatedSlots });
+  const handleViewSlots = async (schedule) => {
+    try {
+      const relatedSlots = await getScheduleSlots(schedule.id);
+      setSelectedSchedule({ ...schedule, relatedSlots });
+    } catch (err) {
+      alert(err.message || 'Ошибка при загрузке слотов');
+    }
   };
 
-  // Получить предметы для выбранного курса
+  // Получить предметы для выбранного курса (для формы расписания)
   const getSubjectsForCourse = (courseId) => {
     const course = courses.find(c => c.id === courseId);
-    return course ? course.subjects : [];
+    if (!course || !course.subjectIds) return [];
+    return subjects.filter(s => course.subjectIds.includes(s.id));
   };
 
   // Получить предметы преподавателя
@@ -264,18 +212,29 @@ function OperatorSchedule() {
     return teacher ? teacher.subjects : [];
   };
 
-  const currentCourseSubjects = getSubjectsForCourse(formData.courseId);
+  const currentCourseSubjects = getSubjectsForCourse(formData.courseId).map(s => s.name);
   const currentTeacherSubjects = formData.teacherId ? getTeacherSubjects(formData.teacherId) : [];
 
-  const daysOfWeek = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+  // Дни недели: 0 = Понедельник, 1 = Вторник, ..., 6 = Воскресенье
+  const daysOfWeek = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
   // Статистика
   const totalSchedules = schedules.length;
   const totalSlots = slots.length;
-  const totalBookings = slots.reduce((sum, s) => sum + s.students.length, 0);
+  const totalBookings = slots.reduce((sum, s) => sum + (s.students?.length || 0), 0);
+
+  if (loading && schedules.length === 0) {
+    return <div className={styles.container}>Загрузка...</div>;
+  }
 
   return (
     <div className={styles.container}>
+      {error && (
+        <div style={{ padding: '10px', background: '#fee', color: '#c00', marginBottom: '20px' }}>
+          Ошибка: {error}
+        </div>
+      )}
+
       {/* Заголовок */}
       <div className={styles.header}>
         <h1 className={styles.title}>Управление расписанием</h1>
@@ -345,11 +304,11 @@ function OperatorSchedule() {
               ) : (
                 schedules.map(schedule => {
                   const teacher = teachers.find(t => t.id === schedule.teacherId);
-                  const course = courses.find(c => c.id === schedule.courseId);
+                  const course = schedule.course || courses.find(c => c.id === schedule.courseId);
                   
                   return (
                     <tr key={schedule.id}>
-                      <td>{teacher?.fio}</td>
+                      <td>{teacher?.fio || schedule.teacher?.fio}</td>
                       <td>{schedule.subject}</td>
                       <td>{course?.name}</td>
                       <td>{daysOfWeek[schedule.dayOfWeek]}</td>
@@ -413,8 +372,8 @@ function OperatorSchedule() {
                         }}
                       >
                         <option value="">Выберите предмет</option>
-                        {courses.flatMap(c => c.subjects).filter((s, i, arr) => arr.indexOf(s) === i).map(subject => (
-                          <option key={subject} value={subject}>{subject}</option>
+                        {subjects.map(subject => (
+                          <option key={subject.id} value={subject.name}>{subject.name}</option>
                         ))}
                       </select>
                     </div>
@@ -536,9 +495,9 @@ function OperatorSchedule() {
                     <option value="">Выберите предмет</option>
                     {/* Показываем предметы из пересечения курса и преподавателя */}
                     {currentCourseSubjects
-                      .filter(s => currentTeacherSubjects.includes(s))
-                      .map(subject => (
-                        <option key={subject} value={subject}>{subject}</option>
+                      .filter(subjectName => currentTeacherSubjects.includes(subjectName))
+                      .map(subjectName => (
+                        <option key={subjectName} value={subjectName}>{subjectName}</option>
                       ))}
                   </select>
                 </div>
@@ -632,7 +591,7 @@ function OperatorSchedule() {
                   <div key={slot.id} className={styles.slotItem}>
                     <div>
                       <strong>{new Date(slot.date).toLocaleDateString('ru-RU')}</strong>
-                      <p className={styles.slotDetails}>Записано: {slot.students.length}/{slot.capacity}</p>
+                      <p className={styles.slotDetails}>Записано: {slot.students?.length || 0}/{slot.capacity}</p>
                     </div>
                   </div>
                 ))

@@ -1,29 +1,46 @@
-// Компонент: Страница авторизации
+// Компонент: Страница авторизации и регистрации
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Select, MenuItem, FormControl } from '@mui/material';
 import styles from './LoginPage.module.css';
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   
-  const [formData, setFormData] = useState({
+  const [mode, setMode] = useState('login'); // 'login' или 'register'
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  // Данные для входа
+  const [loginData, setLoginData] = useState({
     login: '',
     password: ''
   });
-  const [error, setError] = useState('');
+  
+  // Данные для регистрации
+  const [registerData, setRegisterData] = useState({
+    password: '',
+    email: '',
+    studentCardNumber: '',
+    fio: '',
+    group: '',
+    course: ''
+  });
 
-  const handleSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    if (!formData.login || !formData.password) {
+    if (!loginData.login || !loginData.password) {
       setError('Заполните все поля');
       return;
     }
 
-    const result = login(formData.login, formData.password);
+    setLoading(true);
+    const result = await login(loginData.login, loginData.password);
+    setLoading(false);
     
     if (result.success) {
       navigate('/dashboard');
@@ -32,21 +49,50 @@ function LoginPage() {
     }
   };
 
-  const handleChange = (e) => {
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    // Валидация
+    if (!registerData.password || !registerData.email || 
+        !registerData.studentCardNumber || !registerData.fio || 
+        !registerData.group || !registerData.course) {
+      setError('Заполните все поля');
+      return;
+    }
+
+    if (registerData.password.length < 6) {
+      setError('Пароль должен содержать минимум 6 символов');
+      return;
+    }
+
+    setLoading(true);
+    const result = await register(registerData);
+    setLoading(false);
+    
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message);
+    }
+  };
+
+  const handleLoginChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setLoginData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  // Демо-подсказки
-  const demoAccounts = [
-    { role: '🎓 Студент', login: 'ivanov', password: '123' },
-    { role: '👩‍🏫 Преподаватель', login: 'petrova', password: '123' },
-    { role: '🏫 Оператор', login: 'operator', password: '123' },
-    { role: '⚙️ Админ', login: 'admin', password: '123' }
-  ];
+  const handleRegisterChange = (e) => {
+    const { name, value } = e.target;
+    setRegisterData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
 
   return (
     <div className={styles.container}>
@@ -81,60 +127,231 @@ function LoginPage() {
 
       <div className={styles.rightPanel}>
         <div className={styles.formCard}>
-          <h2 className={styles.formTitle}>Вход в систему</h2>
-          
-          <form onSubmit={handleSubmit} className={styles.form}>
-            {error && (
-              <div className={styles.error}>{error}</div>
-            )}
-            
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Логин</label>
-              <input
-                type="text"
-                name="login"
-                value={formData.login}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="Введите логин"
-                autoFocus
-              />
-            </div>
-            
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Пароль</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={styles.input}
-                placeholder="Введите пароль"
-              />
-            </div>
-            
-            <button type="submit" className={styles.submitButton}>
-              Войти
+          {/* Переключатель режима */}
+          <div className={styles.modeToggle}>
+            <button
+              type="button"
+              className={`${styles.modeButton} ${mode === 'login' ? styles.active : ''}`}
+              onClick={() => {
+                setMode('login');
+                setError('');
+              }}
+            >
+              Вход
             </button>
-          </form>
+            <button
+              type="button"
+              className={`${styles.modeButton} ${mode === 'register' ? styles.active : ''}`}
+              onClick={() => {
+                setMode('register');
+                setError('');
+              }}
+            >
+              Регистрация
+            </button>
+          </div>
 
-          <div className={styles.demo}>
-            <p className={styles.demoTitle}>Демо-аккаунты для тестирования:</p>
-            <div className={styles.demoGrid}>
-              {demoAccounts.map((account, index) => (
-                <div
-                  key={index}
-                  className={styles.demoCard}
-                  onClick={() => setFormData({ login: account.login, password: account.password })}
-                >
-                  <div className={styles.demoRole}>{account.role}</div>
-                  <div className={styles.demoCredentials}>
-                    {account.login} / {account.password}
+          {mode === 'login' ? (
+            <>
+              <h2 className={styles.formTitle}>Вход в систему</h2>
+              
+              <form onSubmit={handleLoginSubmit} className={styles.form}>
+                {error && (
+                  <div className={styles.error}>{error}</div>
+                )}
+                
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Логин / Email</label>
+                  <input
+                    type="text"
+                    name="login"
+                    value={loginData.login}
+                    onChange={handleLoginChange}
+                    className={styles.input}
+                    placeholder="Введите логин или email"
+                    autoFocus
+                    disabled={loading}
+                  />
+                </div>
+                
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Пароль</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={loginData.password}
+                    onChange={handleLoginChange}
+                    className={styles.input}
+                    placeholder="Введите пароль"
+                    disabled={loading}
+                  />
+                </div>
+                
+                <button type="submit" className={styles.submitButton} disabled={loading}>
+                  {loading ? 'Вход...' : 'Войти'}
+                </button>
+              </form>
+
+            </>
+          ) : (
+            <>
+              <h2 className={styles.formTitle}>Регистрация студента</h2>
+              <p className={styles.registerHint}>
+                Регистрация доступна только для студентов. Укажите номер зачетки для подтверждения личности.
+              </p>
+              
+              <form onSubmit={handleRegisterSubmit} className={styles.form}>
+                {error && (
+                  <div className={styles.error}>{error}</div>
+                )}
+                
+                {/* ФИО и Номер зачетки */}
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>ФИО *</label>
+                    <input
+                      type="text"
+                      name="fio"
+                      value={registerData.fio}
+                      onChange={handleRegisterChange}
+                      className={styles.input}
+                      placeholder="Иванов Иван Иванович"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                  
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Номер зачетки *</label>
+                    <input
+                      type="text"
+                      name="studentCardNumber"
+                      value={registerData.studentCardNumber}
+                      onChange={handleRegisterChange}
+                      className={styles.input}
+                      placeholder="123456"
+                      disabled={loading}
+                      required
+                    />
+                    <small className={styles.hint}>Уникальный номер</small>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                {/* Курс и Группа */}
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Курс *</label>
+                    <FormControl fullWidth className={styles.selectWrapper}>
+                      <Select
+                        name="course"
+                        value={registerData.course}
+                        onChange={handleRegisterChange}
+                        disabled={loading}
+                        required
+                        className={styles.select}
+                        sx={{
+                          backgroundColor: '#1A2140',
+                          color: '#FFFFFF',
+                          height: '48px',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: 'rgba(255, 255, 255, 0.04)',
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#5B5FFF',
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: '#5B5FFF',
+                          },
+                          '& .MuiSvgIcon-root': {
+                            color: '#A5B4FC',
+                          },
+                        }}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              backgroundColor: '#1A2140',
+                              color: '#FFFFFF',
+                              '& .MuiMenuItem-root': {
+                                color: '#FFFFFF',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(91, 95, 255, 0.2)',
+                                },
+                                '&.Mui-selected': {
+                                  backgroundColor: '#5B5FFF',
+                                  '&:hover': {
+                                    backgroundColor: '#4A4FDD',
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        }}
+                      >
+                        <MenuItem value="">Выберите курс</MenuItem>
+                        <MenuItem value="1">1 курс</MenuItem>
+                        <MenuItem value="2">2 курс</MenuItem>
+                        <MenuItem value="3">3 курс</MenuItem>
+                        <MenuItem value="4">4 курс</MenuItem>
+                        <MenuItem value="5">5 курс</MenuItem>
+                        <MenuItem value="6">6 курс</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </div>
+                  
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Группа *</label>
+                    <input
+                      type="text"
+                      name="group"
+                      value={registerData.group}
+                      onChange={handleRegisterChange}
+                      className={styles.input}
+                      placeholder="М-21-1"
+                      disabled={loading}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Email и Пароль */}
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Email *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={registerData.email}
+                      onChange={handleRegisterChange}
+                      className={styles.input}
+                      placeholder="ivanov@example.com"
+                      disabled={loading}
+                      required
+                    />
+                    <small className={styles.hint}>Email для входа</small>
+                  </div>
+                  
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Пароль *</label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={registerData.password}
+                      onChange={handleRegisterChange}
+                      className={styles.input}
+                      placeholder="Минимум 6 символов"
+                      disabled={loading}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                
+                <button type="submit" className={styles.submitButton} disabled={loading}>
+                  {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>

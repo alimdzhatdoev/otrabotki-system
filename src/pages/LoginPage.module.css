@@ -80,7 +80,7 @@
   border-radius: 24px;
   padding: 48px;
   width: 100%;
-  max-width: 480px;
+  max-width: 700px;
 }
 
 .formTitle {
@@ -91,13 +91,95 @@
   text-align: center;
 }
 
+/* Переключатель режима */
+.modeToggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  background-color: #1A2140;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.modeButton {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #A5B4FC;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modeButton:hover {
+  color: #FFFFFF;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.modeButton.active {
+  background: linear-gradient(135deg, #5B5FFF 0%, #4A4FDD 100%);
+  color: #FFFFFF;
+}
+
+.registerHint {
+  font-size: 13px;
+  color: #A5B4FC;
+  margin-bottom: 24px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Строка формы (для двух полей) */
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.formRow .formGroup {
+  margin-bottom: 0;
+}
+
+.hint {
+  display: block;
+  font-size: 12px;
+  color: #A5B4FC;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+/* Material UI Select стили */
+.selectWrapper {
+  width: 100%;
+}
+
+.select {
+  width: 100%;
+  padding: 12px 18px;
+  background-color: #1A2140;
+  border: 2px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-size: 15px;
+  min-height: auto;
+}
+
+.select:focus {
+  border-color: #5B5FFF;
+  background-color: rgba(91, 95, 255, 0.05);
+}
+
 /* Форма */
 .form {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .formGroup {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .label {
@@ -143,7 +225,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .submitButton:hover {
@@ -153,6 +235,22 @@
 
 .submitButton:active {
   transform: translateY(0);
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.submitButton:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .error {
