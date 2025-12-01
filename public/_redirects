@@ -1,0 +1,6 @@
+# Redirects для SPA (Single Page Application)
+# Все запросы, кроме реальных файлов, перенаправляются на index.html
+# Это позволяет React Router обрабатывать клиентские маршруты
+
+/*    /index.html   200
+

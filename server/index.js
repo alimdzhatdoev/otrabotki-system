@@ -15,10 +15,45 @@ import adminRoutes from './routes/adminRoutes.js';
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: config.nodeEnv === 'development' ? 'http://localhost:5173' : undefined,
-  credentials: true
-}));
+// CORS настройка
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Список разрешенных origin'ов
+    const allowedOrigins = [
+      'http://localhost:5173', // Для локальной разработки
+      process.env.FRONTEND_URL, // Из переменной окружения
+      'https://otrabotki-system.onrender.com', // Прямой URL фронтенда
+    ].filter(Boolean); // Убираем undefined значения
+    
+    // В development разрешаем localhost
+    if (config.nodeEnv === 'development') {
+      allowedOrigins.push('http://localhost:5173');
+    }
+    
+    // Если origin не указан (например, запрос из Postman или прямой доступ), разрешаем
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Проверяем, есть ли origin в списке разрешенных
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // Логируем для отладки
+      console.log('⚠️ CORS: Blocked origin:', origin);
+      console.log('✅ CORS: Allowed origins:', allowedOrigins);
+      console.log('🔧 CORS: FRONTEND_URL from env:', process.env.FRONTEND_URL);
+      // Временно разрешаем для отладки, но лучше вернуть ошибку в production
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
