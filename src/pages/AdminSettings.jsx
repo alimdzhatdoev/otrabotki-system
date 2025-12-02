@@ -8,6 +8,7 @@ import {
   updateLimits,
   getRequests
 } from '../api/adminApi';
+import { getCourses } from '../api/commonApi';
 import styles from './AdminSettings.module.css';
 
 function AdminSettings() {
@@ -122,19 +123,15 @@ function AdminSettings() {
   // Экспорт заявок
   const exportRequests = () => {
     const data = requests.map(r => {
-      const student = students.find(s => s.id === r.studentId);
-      const teacher = teachers.find(t => t.id === r.teacherId);
-      const att = attendance.find(a => a.slotId === r.slotId && a.studentId === r.studentId);
-      
       return {
-        'Студент': student?.fio || '',
-        'Группа': student?.group || '',
+        'Студент': r.student?.fio || '',
+        'Группа': r.student?.group || '',
         'Предмет': r.subject,
         'Дата': new Date(r.date).toLocaleDateString('ru-RU'),
         'Время': `${r.timeFrom} - ${r.timeTo}`,
-        'Преподаватель': teacher?.fio || '',
-        'Пришёл': att?.attended ? 'Да' : 'Нет',
-        'Отработал': att?.completed ? 'Да' : 'Нет'
+        'Преподаватель': r.teacher?.fio || '',
+        'Пришёл': r.attended ? 'Да' : 'Нет',
+        'Отработал': r.completed ? 'Да' : 'Нет'
       };
     });
     exportToCSV(data, 'requests.csv');

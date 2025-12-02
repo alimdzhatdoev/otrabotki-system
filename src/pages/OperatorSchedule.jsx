@@ -101,9 +101,9 @@ function OperatorSchedule() {
 
       // Показываем учётные данные
       setGeneratedCredentials({
-        login: response.credentials.login,
-        password: response.credentials.password,
-        fio: newTeacher.fio
+        login: response.teacher.login,
+        password: response.teacher.password,
+        fio: response.teacher.fio
       });
 
       // Обновляем список преподавателей
@@ -151,12 +151,25 @@ function OperatorSchedule() {
     }
     
     try {
-      await createTeacherSchedule(formData);
+      const response = await createTeacherSchedule(formData);
       
-      // Генерируем слоты автоматически
-      await generateSlots(null, 4);
+      // Генерируем слоты автоматически для созданного расписания
+      if (response.schedule?.id) {
+        try {
+          // Небольшая задержка, чтобы убедиться, что расписание сохранено
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          await generateSlots(response.schedule.id, 4);
+        } catch (slotError) {
+          console.error('Ошибка генерации слотов:', slotError);
+          const errorMessage = slotError.response?.data?.error || slotError.message || 'Неизвестная ошибка';
+          alert(`Расписание создано, но произошла ошибка при создании слотов: ${errorMessage}`);
+        }
+      } else {
+        alert('Расписание создано, но не удалось получить ID для генерации слотов');
+      }
       
-      // Перезагружаем данные
+      // Перезагружаем данные, чтобы увидеть созданные расписание и слоты
       await loadData();
       
       // Сброс формы

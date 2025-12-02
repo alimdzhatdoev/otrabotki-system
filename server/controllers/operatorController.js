@@ -11,7 +11,8 @@ import {
   getSubjects,
   saveSubjects
 } from '../services/fileDb.js';
-import { generateSlotsFromSchedule } from '../services/slotService.js';
+import { generateSlotsFromSchedule, generateSlotsFromSchedules } from '../services/slotService.js';
+import { getNextDayOfWeek, formatDate } from '../utils/dateUtils.js';
 import { generateId } from '../utils/idGenerator.js';
 
 /**
@@ -111,27 +112,96 @@ export async function deleteTeacherSchedule(req, res, next) {
  */
 export async function generateSlots(req, res, next) {
   try {
-    const { scheduleId, firstSlotDate } = req.body;
-
-    if (!scheduleId || !firstSlotDate) {
-      return res.status(400).json({ error: 'ID расписания и дата первого слота обязательны' });
-    }
-
-    const schedules = await getTeacherSchedules();
-    const schedule = schedules.find(s => s.id === scheduleId);
-
-    if (!schedule) {
-      return res.status(404).json({ error: 'Расписание не найдено' });
-    }
-
-    const slots = await getSlots();
-    const newSlots = generateSlotsFromSchedule(schedule, firstSlotDate);
+    const { scheduleId, firstSlotDate, weeksAhead } = req.body;
     
-    // Добавляем новые слоты
-    const updatedSlots = [...slots, ...newSlots];
-    await saveSlots(updatedSlots);
+    // Нормализуем scheduleId (убираем null, undefined, пустые строки, строку "null")
+    const normalizedScheduleId = scheduleId && 
+                                 scheduleId !== 'null' && 
+                                 scheduleId !== 'undefined' && 
+                                 scheduleId !== '' && 
+                                 scheduleId !== null && 
+                                 scheduleId !== undefined ? scheduleId : null;
+    const normalizedFirstSlotDate = firstSlotDate && 
+                                    firstSlotDate !== 'null' && 
+                                    firstSlotDate !== 'undefined' && 
+                                    firstSlotDate !== '' && 
+                                    firstSlotDate !== null && 
+                                    firstSlotDate !== undefined ? firstSlotDate : null;
+    
+    // Если scheduleId не указан, генерируем слоты для всех расписаний
+    if (!normalizedScheduleId) {
+      const weeks = weeksAhead || 4;
+      const newSlots = await generateSlotsFromSchedules(weeks);
+      return res.json({ message: `Создано ${newSlots.length} слотов`, slots: newSlots });
+    }
 
-    res.json({ message: `Создано ${newSlots.length} слотов`, slots: newSlots });
+    // Если scheduleId указан, но нет firstSlotDate, вычисляем дату автоматически
+    if (normalizedScheduleId && !normalizedFirstSlotDate) {
+      const schedules = await getTeacherSchedules();
+      const schedule = schedules.find(s => s.id === normalizedScheduleId);
+
+      if (!schedule) {
+        // Пробуем еще раз через небольшую задержку (на случай, если расписание еще сохраняется)
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const schedulesRetry = await getTeacherSchedules();
+        const scheduleRetry = schedulesRetry.find(s => s.id === normalizedScheduleId);
+        
+        if (!scheduleRetry) {
+          return res.status(404).json({ error: 'Расписание не найдено' });
+        }
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const firstSlotDateObj = getNextDayOfWeek(scheduleRetry.dayOfWeek, today);
+        const firstSlotDateStr = formatDate(firstSlotDateObj);
+
+        const slots = await getSlots();
+        const newSlots = generateSlotsFromSchedule(scheduleRetry, firstSlotDateStr);
+        
+        // Добавляем новые слоты
+        const updatedSlots = [...slots, ...newSlots];
+        await saveSlots(updatedSlots);
+
+        return res.json({ message: `Создано ${newSlots.length} слотов`, slots: newSlots });
+      }
+
+      // Вычисляем дату первого слота на основе dayOfWeek
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const firstSlotDateObj = getNextDayOfWeek(schedule.dayOfWeek, today);
+      const firstSlotDateStr = formatDate(firstSlotDateObj);
+
+      const slots = await getSlots();
+      const newSlots = generateSlotsFromSchedule(schedule, firstSlotDateStr);
+      
+      // Добавляем новые слоты
+      const updatedSlots = [...slots, ...newSlots];
+      await saveSlots(updatedSlots);
+
+      return res.json({ message: `Создано ${newSlots.length} слотов`, slots: newSlots });
+    }
+
+    // Если указаны и scheduleId, и firstSlotDate
+    if (normalizedScheduleId && normalizedFirstSlotDate) {
+      const schedules = await getTeacherSchedules();
+      const schedule = schedules.find(s => s.id === normalizedScheduleId);
+
+      if (!schedule) {
+        return res.status(404).json({ error: 'Расписание не найдено' });
+      }
+
+      const slots = await getSlots();
+      const newSlots = generateSlotsFromSchedule(schedule, normalizedFirstSlotDate);
+      
+      // Добавляем новые слоты
+      const updatedSlots = [...slots, ...newSlots];
+      await saveSlots(updatedSlots);
+
+      return res.json({ message: `Создано ${newSlots.length} слотов`, slots: newSlots });
+    }
+
+    // Если ничего не указано - это не должно произойти, но на всякий случай
+    return res.status(400).json({ error: 'ID расписания или количество недель обязательны' });
   } catch (error) {
     next(error);
   }
