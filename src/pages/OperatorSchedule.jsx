@@ -11,7 +11,8 @@ import {
   createTeacher,
   getCourses,
   getTeachers as getTeachersApi,
-  getSubjects
+  getSubjects,
+  updateSlot as updateSlotApi
 } from '../api/operatorApi';
 import styles from './OperatorSchedule.module.css';
 
@@ -29,6 +30,15 @@ function OperatorSchedule() {
   const [generatedCredentials, setGeneratedCredentials] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [weeksAhead, setWeeksAhead] = useState(4);
+  const [editingSlot, setEditingSlot] = useState(null);
+  const [slotEditForm, setSlotEditForm] = useState({
+    date: '',
+    timeFrom: '',
+    timeTo: '',
+    capacity: 1,
+    teacherId: ''
+  });
   
   // Форма нового расписания
   const [formData, setFormData] = useState({
@@ -159,7 +169,7 @@ function OperatorSchedule() {
           // Небольшая задержка, чтобы убедиться, что расписание сохранено
           await new Promise(resolve => setTimeout(resolve, 200));
           
-          await generateSlots(response.schedule.id, 4);
+          await generateSlots(response.schedule.id, weeksAhead);
         } catch (slotError) {
           console.error('Ошибка генерации слотов:', slotError);
           const errorMessage = slotError.response?.data?.error || slotError.message || 'Неизвестная ошибка';
@@ -182,6 +192,7 @@ function OperatorSchedule() {
         timeTo: '',
         capacity: 1
       });
+      setWeeksAhead(4);
       
       setShowModal(false);
       alert('Расписание добавлено! Слоты созданы автоматически.');
@@ -287,7 +298,7 @@ function OperatorSchedule() {
       <div className={styles.infoCard}>
         <p className={styles.infoText}>
           💡 <strong>Как это работает:</strong> Вы создаёте регулярное расписание для преподавателей (например, "Каждый понедельник с 10:00 до 11:30").
-          Система автоматически создаёт слоты отработок на следующие 4 недели. Студенты видят эти слоты и могут записываться.
+          Система автоматически создаёт слоты отработок на выбранный период (по умолчанию 4 недели). Студенты видят эти слоты и могут записываться.
         </p>
       </div>
 
@@ -561,9 +572,24 @@ function OperatorSchedule() {
                     onChange={handleInputChange}
                     className={styles.input}
                     min="1"
-                    max="10"
+                    max="100"
                     required
                   />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Период генерации слотов (недель)</label>
+                  <select
+                    value={weeksAhead}
+                    onChange={(e) => setWeeksAhead(parseInt(e.target.value, 10))}
+                    className={styles.input}
+                  >
+                    <option value={4}>4 недели</option>
+                    <option value={8}>8 недель</option>
+                    <option value={12}>12 недель</option>
+                  </select>
                 </div>
               </div>
               
@@ -606,6 +632,23 @@ function OperatorSchedule() {
                       <strong>{new Date(slot.date).toLocaleDateString('ru-RU')}</strong>
                       <p className={styles.slotDetails}>Записано: {slot.students?.length || 0}/{slot.capacity}</p>
                     </div>
+                    <button
+                      type="button"
+                      className={styles.actionButton}
+                      title="Редактировать слот"
+                      onClick={() => {
+                        setEditingSlot(slot);
+                        setSlotEditForm({
+                          date: slot.date,
+                          timeFrom: slot.timeFrom,
+                          timeTo: slot.timeTo,
+                          capacity: slot.capacity,
+                          teacherId: slot.teacherId
+                        });
+                      }}
+                    >
+                      ✏️
+                    </button>
                   </div>
                 ))
               )}
@@ -616,6 +659,139 @@ function OperatorSchedule() {
             >
               Закрыть
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования слота */}
+      {editingSlot && (
+        <div className={styles.modal} onClick={() => setEditingSlot(null)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Редактировать слот</h2>
+            <form
+              className={styles.form}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const updates = {
+                    date: slotEditForm.date,
+                    timeFrom: slotEditForm.timeFrom,
+                    timeTo: slotEditForm.timeTo,
+                    capacity: slotEditForm.capacity,
+                    teacherId: slotEditForm.teacherId
+                  };
+                  await updateSlotApi(editingSlot.id, updates);
+                  // После успешного обновления полностью перезагружаем расписания и слоты,
+                  // чтобы отразить возможное создание нового расписания/слота
+                  await loadData();
+                  setEditingSlot(null);
+                  setSelectedSchedule(null);
+                } catch (err) {
+                  const message = err.response?.data?.error || err.message || 'Ошибка при обновлении слота';
+                  alert(message);
+                }
+              }}
+            >
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Преподаватель</label>
+                  <select
+                    value={slotEditForm.teacherId || ''}
+                    onChange={(e) =>
+                      setSlotEditForm(prev => ({
+                        ...prev,
+                        teacherId: e.target.value
+                      }))
+                    }
+                    className={styles.input}
+                  >
+                    <option value="">Оставить без изменений</option>
+                    {teachers
+                      .filter(teacher =>
+                        Array.isArray(teacher.subjects) &&
+                        teacher.subjects.includes(editingSlot.subject)
+                      )
+                      .map(teacher => (
+                        <option key={teacher.id} value={teacher.id}>
+                          {teacher.fio}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Дата</label>
+                  <input
+                    type="date"
+                    value={slotEditForm.date}
+                    onChange={(e) =>
+                      setSlotEditForm(prev => ({ ...prev, date: e.target.value }))
+                    }
+                    className={styles.input}
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Время с</label>
+                  <input
+                    type="time"
+                    value={slotEditForm.timeFrom}
+                    onChange={(e) =>
+                      setSlotEditForm(prev => ({ ...prev, timeFrom: e.target.value }))
+                    }
+                    className={styles.input}
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Время до</label>
+                  <input
+                    type="time"
+                    value={slotEditForm.timeTo}
+                    onChange={(e) =>
+                      setSlotEditForm(prev => ({ ...prev, timeTo: e.target.value }))
+                    }
+                    className={styles.input}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Макс. студентов</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={slotEditForm.capacity}
+                    onChange={(e) =>
+                      setSlotEditForm(prev => ({
+                        ...prev,
+                        capacity: parseInt(e.target.value, 10) || 1
+                      }))
+                    }
+                    className={styles.input}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  onClick={() => setEditingSlot(null)}
+                  className={styles.cancelButton}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className={styles.submitButton}>
+                  Сохранить
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

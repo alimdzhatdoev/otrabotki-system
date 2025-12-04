@@ -6,7 +6,9 @@ import {
   getUsers,
   getLimits,
   updateLimits,
-  getRequests
+  getRequests,
+  updateUser,
+  deleteUser
 } from '../api/adminApi';
 import { getCourses } from '../api/commonApi';
 import styles from './AdminSettings.module.css';
@@ -19,6 +21,9 @@ function AdminSettings() {
   const [requests, setRequests] = useState([]);
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [editingTeacher, setEditingTeacher] = useState(null);
+  const [teacherForm, setTeacherForm] = useState({ fio: '', subjectsText: '', login: '' });
+  const [generatedTeacherPassword, setGeneratedTeacherPassword] = useState('');
   const [activeTab, setActiveTab] = useState('analytics');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -195,12 +200,6 @@ function AdminSettings() {
         >
           🎓 Студенты ({students.length})
         </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'settings' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          ⚙️ Настройки
-        </button>
       </div>
 
       {/* Контент вкладок */}
@@ -313,6 +312,7 @@ function AdminSettings() {
                   <th>ФИО</th>
                   <th>Логин</th>
                   <th>Предметы</th>
+                  <th>Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -321,6 +321,43 @@ function AdminSettings() {
                     <td>{teacher.fio}</td>
                     <td><code>{teacher.login}</code></td>
                     <td>{teacher.subjects.join(', ')}</td>
+                    <td>
+                      <div className={styles.teacherActions}>
+                        <button
+                          type="button"
+                          className={styles.teacherButton}
+                          onClick={() => {
+                            setEditingTeacher(teacher);
+                            setTeacherForm({
+                              fio: teacher.fio,
+                              subjectsText: teacher.subjects.join(', '),
+                              login: teacher.login
+                            });
+                            setGeneratedTeacherPassword('');
+                          }}
+                        >
+                          <span>✏️</span>
+                          <span>Изменить</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.teacherButtonDanger}
+                          onClick={async () => {
+                            if (!window.confirm('Удалить этого преподавателя?')) return;
+                            try {
+                              await deleteUser(teacher.id);
+                              const usersData = await getUsers();
+                              setTeachers(usersData.filter(u => u.role === 'teacher'));
+                            } catch (err) {
+                              alert(err.message || 'Ошибка при удалении преподавателя');
+                            }
+                          }}
+                        >
+                          <span>🗑</span>
+                          <span>Удалить</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -418,9 +455,10 @@ function AdminSettings() {
           </div>
         )}
 
+        {/* Вкладка настроек временно отключена, чтобы не путать пользователей.
+            Логику можно быстро вернуть, раскомментировав блок ниже.
         {activeTab === 'settings' && (
           <div className={styles.grid}>
-            {/* Лимиты */}
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>⚙️ Настройка лимитов</h2>
               <form onSubmit={handleSaveLimits} className={styles.form}>
@@ -457,10 +495,136 @@ function AdminSettings() {
                 </p>
               </div>
             </div>
-
           </div>
         )}
+        */}
       </div>
+
+      {/* Модалка редактирования преподавателя */}
+      {editingTeacher && (
+        <div className={styles.modal} onClick={() => setEditingTeacher(null)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Изменить преподавателя</h2>
+            <form
+              className={styles.form}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  const subjects = teacherForm.subjectsText
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean);
+
+                  const updates = {
+                    fio: teacherForm.fio,
+                    subjects
+                  };
+
+                  if (generatedTeacherPassword) {
+                    updates.password = generatedTeacherPassword;
+                  }
+
+                  await updateUser(editingTeacher.id, updates);
+
+                  // Перезагружаем список преподавателей
+                  const usersData = await getUsers();
+                  setTeachers(usersData.filter(u => u.role === 'teacher'));
+
+                  alert('Преподаватель обновлён');
+                  setEditingTeacher(null);
+                  setGeneratedTeacherPassword('');
+                } catch (err) {
+                  alert(err.message || 'Ошибка при обновлении преподавателя');
+                }
+              }}
+            >
+              <div className={styles.formGroup}>
+                <label className={styles.label}>ФИО</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={teacherForm.fio}
+                  onChange={(e) =>
+                    setTeacherForm(prev => ({ ...prev, fio: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Логин</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={teacherForm.login}
+                  disabled
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Предметы (через запятую)</label>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={teacherForm.subjectsText}
+                  onChange={(e) =>
+                    setTeacherForm(prev => ({ ...prev, subjectsText: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Пароль</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={generatedTeacherPassword}
+                    placeholder="Нажмите «Сгенерировать пароль»"
+                    readOnly
+                  />
+                  <button
+                    type="button"
+                    className={styles.exportButton}
+                    onClick={() => {
+                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+                      let pwd = '';
+                      for (let i = 0; i < 10; i++) {
+                        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+                      }
+                      setGeneratedTeacherPassword(pwd);
+                    }}
+                  >
+                    🔐 Сгенерировать
+                  </button>
+                </div>
+                {generatedTeacherPassword && (
+                  <p style={{ marginTop: 8, fontSize: 12, color: '#A5B4FC' }}>
+                    Новый пароль будет сохранён для преподавателя после нажатия «Сохранить».
+                  </p>
+                )}
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={() => {
+                    setEditingTeacher(null);
+                    setGeneratedTeacherPassword('');
+                  }}
+                >
+                  Отмена
+                </button>
+                <button type="submit" className={styles.submitButton}>
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

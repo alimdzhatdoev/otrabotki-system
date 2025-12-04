@@ -1,1 +1,50 @@
-[]
+[
+  {
+    "id": "slot_1764840277631_4s13hc5i5",
+    "scheduleId": "id_1764840277424_g0ainrwa7",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-08",
+    "timeFrom": "12:00",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764840277631_1lxyir4cm",
+    "scheduleId": "id_1764840277424_g0ainrwa7",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-22",
+    "timeFrom": "12:00",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764840277631_lm71n2g59",
+    "scheduleId": "id_1764840277424_g0ainrwa7",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-29",
+    "timeFrom": "12:00",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764840307274_znia49gcq",
+    "scheduleId": "id_1764840307274_mdvvvwy7b",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-15",
+    "timeFrom": "12:00",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "id_1764840301493_ivklrlhx5",
+    "students": []
+  }
+]

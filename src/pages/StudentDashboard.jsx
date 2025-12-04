@@ -130,13 +130,13 @@ function StudentDashboard() {
           <div className={styles.limitItem}>
             <span className={styles.limitLabel}>Записей сегодня</span>
             <span className={styles.limitValue}>
-              {limitsCurrent.today}/{limits.maxPerDay}
+              {limitsCurrent.today}
             </span>
           </div>
           <div className={styles.limitItem}>
-            <span className={styles.limitLabel}>Записей на неделю</span>
+            <span className={styles.limitLabel}>Записей за неделю</span>
             <span className={styles.limitValue}>
-              {limitsCurrent.week}/{limits.maxPerWeek}
+              {limitsCurrent.week}
             </span>
           </div>
         </div>

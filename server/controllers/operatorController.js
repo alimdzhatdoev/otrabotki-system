@@ -15,6 +15,9 @@ import { generateSlotsFromSchedule, generateSlotsFromSchedules } from '../servic
 import { getNextDayOfWeek, formatDate } from '../utils/dateUtils.js';
 import { generateId } from '../utils/idGenerator.js';
 
+// Максимальное количество студентов на слот (используется при валидации)
+const MAX_STUDENTS_PER_SLOT = 100;
+
 /**
  * Получение списка расписаний преподавателей
  * GET /api/operator/teacher-schedules
@@ -56,6 +59,11 @@ export async function createTeacherSchedule(req, res, next) {
     }
 
     const schedules = await getTeacherSchedules();
+
+    const capacityNum = parseInt(capacity);
+    if (Number.isNaN(capacityNum) || capacityNum < 1 || capacityNum > MAX_STUDENTS_PER_SLOT) {
+      return res.status(400).json({ error: `Количество мест должно быть от 1 до ${MAX_STUDENTS_PER_SLOT}` });
+    }
     
     const newSchedule = {
       id: generateId(),
@@ -65,7 +73,7 @@ export async function createTeacherSchedule(req, res, next) {
       dayOfWeek: parseInt(dayOfWeek),
       timeFrom,
       timeTo,
-      capacity: parseInt(capacity)
+      capacity: capacityNum
     };
 
     schedules.push(newSchedule);
@@ -113,6 +121,16 @@ export async function deleteTeacherSchedule(req, res, next) {
 export async function generateSlots(req, res, next) {
   try {
     const { scheduleId, firstSlotDate, weeksAhead } = req.body;
+
+    // Валидация и нормализация количества недель
+    let weeks = 4;
+    if (weeksAhead !== undefined && weeksAhead !== null && weeksAhead !== '') {
+      const parsedWeeks = parseInt(weeksAhead);
+      if (Number.isNaN(parsedWeeks) || parsedWeeks < 1 || parsedWeeks > 52) {
+        return res.status(400).json({ error: 'Параметр weeksAhead должен быть числом от 1 до 52' });
+      }
+      weeks = parsedWeeks;
+    }
     
     // Нормализуем scheduleId (убираем null, undefined, пустые строки, строку "null")
     const normalizedScheduleId = scheduleId && 
@@ -130,7 +148,6 @@ export async function generateSlots(req, res, next) {
     
     // Если scheduleId не указан, генерируем слоты для всех расписаний
     if (!normalizedScheduleId) {
-      const weeks = weeksAhead || 4;
       const newSlots = await generateSlotsFromSchedules(weeks);
       return res.json({ message: `Создано ${newSlots.length} слотов`, slots: newSlots });
     }
@@ -156,7 +173,7 @@ export async function generateSlots(req, res, next) {
         const firstSlotDateStr = formatDate(firstSlotDateObj);
 
         const slots = await getSlots();
-        const newSlots = generateSlotsFromSchedule(scheduleRetry, firstSlotDateStr);
+        const newSlots = generateSlotsFromSchedule(scheduleRetry, firstSlotDateStr, weeks);
         
         // Добавляем новые слоты
         const updatedSlots = [...slots, ...newSlots];
@@ -172,7 +189,7 @@ export async function generateSlots(req, res, next) {
       const firstSlotDateStr = formatDate(firstSlotDateObj);
 
       const slots = await getSlots();
-      const newSlots = generateSlotsFromSchedule(schedule, firstSlotDateStr);
+      const newSlots = generateSlotsFromSchedule(schedule, firstSlotDateStr, weeks);
       
       // Добавляем новые слоты
       const updatedSlots = [...slots, ...newSlots];
@@ -191,7 +208,7 @@ export async function generateSlots(req, res, next) {
       }
 
       const slots = await getSlots();
-      const newSlots = generateSlotsFromSchedule(schedule, normalizedFirstSlotDate);
+      const newSlots = generateSlotsFromSchedule(schedule, normalizedFirstSlotDate, weeks);
       
       // Добавляем новые слоты
       const updatedSlots = [...slots, ...newSlots];
@@ -202,6 +219,140 @@ export async function generateSlots(req, res, next) {
 
     // Если ничего не указано - это не должно произойти, но на всякий случай
     return res.status(400).json({ error: 'ID расписания или количество недель обязательны' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Обновление слота (дата/время/вместимость)
+ * PATCH /api/operator/slots/:id
+ */
+export async function updateSlot(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { date, timeFrom, timeTo, capacity, isActive, teacherId } = req.body;
+
+    const slots = await getSlots();
+    const slotIndex = slots.findIndex(s => s.id === id);
+
+    if (slotIndex === -1) {
+      return res.status(404).json({ error: 'Слот не найден' });
+    }
+
+    const slot = slots[slotIndex];
+
+    // Запрещаем редактировать прошедшие слоты
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const slotDateObj = new Date(slot.date + 'T00:00:00');
+    slotDateObj.setHours(0, 0, 0, 0);
+
+    if (slotDateObj < today) {
+      return res.status(400).json({ error: 'Нельзя редактировать прошедший слот' });
+    }
+
+    const bookedCount = Array.isArray(slot.students) ? slot.students.length : 0;
+
+    let newCapacity = slot.capacity;
+    if (capacity !== undefined) {
+      const capacityNum = parseInt(capacity);
+      if (Number.isNaN(capacityNum) || capacityNum < 1 || capacityNum > MAX_STUDENTS_PER_SLOT) {
+        return res.status(400).json({ error: `Количество мест должно быть от 1 до ${MAX_STUDENTS_PER_SLOT}` });
+      }
+      if (capacityNum < bookedCount) {
+        return res.status(400).json({ error: `Нельзя уменьшить количество мест ниже уже записанных студентов (${bookedCount})` });
+      }
+      newCapacity = capacityNum;
+    }
+
+    // При смене преподавателя проверяем, что такой преподаватель существует
+    let newTeacherId = slot.teacherId;
+    let teacherChanged = false;
+    if (teacherId !== undefined && teacherId !== null && teacherId !== '') {
+      const users = await getUsers();
+      const teacher = users.find(
+        u => u.role === 'teacher' && String(u.id) === String(teacherId)
+      );
+      if (!teacher) {
+        return res.status(400).json({ error: 'Выбранный преподаватель не найден' });
+      }
+      // Проверяем, что у преподавателя есть этот предмет
+      if (!Array.isArray(teacher.subjects) || !teacher.subjects.includes(baseUpdatedSlot.subject)) {
+        return res.status(400).json({ error: 'У выбранного преподавателя нет этого предмета' });
+      }
+      newTeacherId = teacher.id;
+      teacherChanged = String(newTeacherId) !== String(slot.teacherId);
+    }
+
+    const baseUpdatedSlot = {
+      ...slot,
+      ...(date && { date }),
+      ...(timeFrom && { timeFrom }),
+      ...(timeTo && { timeTo }),
+      ...(capacity !== undefined && { capacity: newCapacity }),
+      ...(isActive !== undefined && { isActive: Boolean(isActive) })
+    };
+
+    // Если преподаватель изменился — переносим слот в расписание нового преподавателя
+    if (teacherChanged) {
+      // Загружаем расписания, чтобы создать новое расписание для нового преподавателя
+      const schedules = await getTeacherSchedules();
+
+      // Определяем день недели для расписания на основе исходного расписания,
+      // если оно существует, иначе вычисляем из даты слота
+      let dayOfWeek = 0;
+      const originalSchedule = schedules.find(s => s.id === slot.scheduleId);
+      if (originalSchedule) {
+        dayOfWeek = originalSchedule.dayOfWeek;
+      } else {
+        // Преобразуем дату слота в день недели (0 = Пн, ... 6 = Вс)
+        const d = new Date(baseUpdatedSlot.date + 'T00:00:00');
+        const jsDay = d.getDay(); // 0 = Вс, 1 = Пн, ...
+        dayOfWeek = jsDay === 0 ? 6 : jsDay - 1;
+      }
+
+      // Создаём новое расписание для нового преподавателя
+      const newSchedule = {
+        id: generateId(),
+        teacherId: newTeacherId,
+        subject: baseUpdatedSlot.subject,
+        courseId: baseUpdatedSlot.courseId,
+        dayOfWeek,
+        timeFrom: baseUpdatedSlot.timeFrom,
+        timeTo: baseUpdatedSlot.timeTo,
+        capacity: newCapacity
+      };
+
+      schedules.push(newSchedule);
+      await saveTeacherSchedules(schedules);
+
+      // Создаём новый слот, привязанный к новому расписанию
+      const newSlot = {
+        ...baseUpdatedSlot,
+        id: generateId('slot'),
+        teacherId: newTeacherId,
+        scheduleId: newSchedule.id
+      };
+
+      // Удаляем старый слот
+      slots.splice(slotIndex, 1);
+      // Добавляем новый слот
+      slots.push(newSlot);
+      await saveSlots(slots);
+
+      return res.json({ message: 'Слот перенесён к другому преподавателю', slot: newSlot });
+    }
+
+    const updatedSlot = {
+      ...baseUpdatedSlot,
+      teacherId: newTeacherId
+    };
+
+    slots[slotIndex] = updatedSlot;
+    await saveSlots(slots);
+
+    res.json({ message: 'Слот обновлён', slot: updatedSlot });
   } catch (error) {
     next(error);
   }

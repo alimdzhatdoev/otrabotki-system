@@ -17,7 +17,8 @@ import {
   updateCourse,
   deleteSubjectFromCourse,
   addSubjectsToCourse,
-  deleteCourse
+  deleteCourse,
+  updateSlot
 } from '../controllers/operatorController.js';
 
 const router = express.Router();
@@ -43,6 +44,9 @@ router.post('/generate-slots', generateSlots);
 
 // GET /api/operator/slots - все слоты
 router.get('/slots', getAllSlots);
+
+// PATCH /api/operator/slots/:id - обновить слот
+router.patch('/slots/:id', updateSlot);
 
 // GET /api/operator/courses - получить курсы
 router.get('/courses', getCoursesList);

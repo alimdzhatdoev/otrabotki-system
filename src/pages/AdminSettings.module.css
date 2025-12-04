@@ -440,6 +440,54 @@
   color: #5B5FFF;
 }
 
+/* Кнопки действий для преподавателей */
+.teacherActions {
+  display: flex;
+  gap: 8px;
+}
+
+.teacherButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #4F46E5, #6366F1);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.teacherButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.5);
+}
+
+.teacherButtonDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.6);
+  background: rgba(248, 113, 113, 0.08);
+  color: #F97373;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.teacherButtonDanger:hover {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 1);
+  transform: translateY(-1px);
+}
+
 /* Статусы */
 .statusYes {
   color: #38BDF8;

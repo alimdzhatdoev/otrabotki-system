@@ -7,6 +7,9 @@ import {
   getCourses, 
   saveCourses,
   getSlots,
+  saveSlots,
+  getTeacherSchedules,
+  saveTeacherSchedules,
   getAttendance
 } from '../services/fileDb.js';
 import { getAnalytics } from '../services/analyticsService.js';
@@ -141,13 +144,26 @@ export async function deleteUser(req, res, next) {
     const { id } = req.params;
 
     const users = await getUsers();
+    const userToDelete = users.find(u => u.id === id);
     const updatedUsers = users.filter(u => u.id !== id);
 
-    if (users.length === updatedUsers.length) {
+    if (!userToDelete) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
 
     await saveUsers(updatedUsers);
+
+    // Если удаляем преподавателя — удаляем его расписания и слоты
+    if (userToDelete.role === 'teacher') {
+      const schedules = await getTeacherSchedules();
+      const updatedSchedules = schedules.filter(s => s.teacherId !== id);
+      await saveTeacherSchedules(updatedSchedules);
+
+      const slots = await getSlots();
+      const updatedSlots = slots.filter(s => s.teacherId !== id);
+      await saveSlots(updatedSlots);
+    }
+
     res.json({ message: 'Пользователь удалён' });
   } catch (error) {
     next(error);

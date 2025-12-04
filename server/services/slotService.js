@@ -64,17 +64,18 @@ export async function generateSlotsFromSchedules(weeksAhead = 4) {
 }
 
 /**
- * Генерирует слоты для одного расписания на 4 недели
+ * Генерирует слоты для одного расписания на указанное количество недель
  * @param {object} schedule - расписание преподавателя
  * @param {string} firstSlotDate - дата первого слота в формате YYYY-MM-DD
+ * @param {number} weeksAhead - количество недель вперёд (по умолчанию 4)
  * @returns {Array} - массив созданных слотов
  */
-export function generateSlotsFromSchedule(schedule, firstSlotDate) {
+export function generateSlotsFromSchedule(schedule, firstSlotDate, weeksAhead = 4) {
   const newSlots = [];
   const startDate = new Date(firstSlotDate + 'T00:00:00');
   
-  // Генерируем слоты на 4 недели
-  for (let week = 0; week < 4; week++) {
+  // Генерируем слоты на указанное количество недель
+  for (let week = 0; week < weeksAhead; week++) {
     const slotDate = new Date(startDate);
     slotDate.setDate(startDate.getDate() + week * 7);
     

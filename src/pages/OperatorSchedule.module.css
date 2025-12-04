@@ -153,6 +153,10 @@
   padding: 12px;
   background-color: #1A2140;
   border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .slotDetails {

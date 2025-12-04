@@ -47,6 +47,16 @@ export async function generateSlots(scheduleId = null, weeksAhead = 4) {
 }
 
 /**
+ * Обновление слота
+ * @param {string} slotId - ID слота
+ * @param {object} updates - поля для обновления (date, timeFrom, timeTo, capacity, isActive)
+ * @returns {Promise<object>}
+ */
+export async function updateSlot(slotId, updates) {
+  return await patch(`/operator/slots/${slotId}`, updates);
+}
+
+/**
  * Получение всех слотов
  * @returns {Promise<Array>}
  */
