@@ -1,0 +1,57 @@
+[
+  {
+    "id": "o1",
+    "login": "operator",
+    "password": "operator",
+    "role": "operator",
+    "fio": "Оператор Деканата"
+  },
+  {
+    "id": "a1",
+    "login": "admin",
+    "password": "admin",
+    "role": "admin",
+    "fio": "Администратор Системы"
+  },
+  {
+    "id": "t_1764606779206_seofmp78o",
+    "login": "aybazova",
+    "password": "EBDw5Uy0",
+    "role": "teacher",
+    "fio": "Айбазова Фатима Унуховна",
+    "subjects": [
+      "Биология"
+    ]
+  },
+  {
+    "id": "s_1764613223304_ac8j2ko8o",
+    "login": "ivanov@mail.ru",
+    "password": "ivanov@mail.ru",
+    "email": "ivanov@mail.ru",
+    "studentCardNumber": "123123123",
+    "role": "student",
+    "fio": "Иванов Иван Иванович",
+    "group": "ПМ-131",
+    "course": 2
+  },
+  {
+    "id": "id_1764839298957_si7ivt3th",
+    "login": "ivanovsergeypetrovich",
+    "password": "123",
+    "role": "teacher",
+    "fio": "Иванов Сергей Петрович",
+    "subjects": [
+      "Анатомия"
+    ]
+  },
+  {
+    "id": "id_1764840301493_ivklrlhx5",
+    "login": "petrovsergeyivanovich",
+    "password": "123",
+    "role": "teacher",
+    "fio": "Петров Сергей Иванович",
+    "subjects": [
+      "Биология"
+    ]
+  }
+]
