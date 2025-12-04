@@ -1,5 +1,5 @@
 // Компонент: Панель администратора с аналитикой и экспортом
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   getAnalytics,
@@ -8,7 +8,9 @@ import {
   updateLimits,
   getRequests,
   updateUser,
-  deleteUser
+  deleteUser,
+  exportData,
+  importData
 } from '../api/adminApi';
 import { getCourses } from '../api/commonApi';
 import styles from './AdminSettings.module.css';
@@ -27,6 +29,8 @@ function AdminSettings() {
   const [activeTab, setActiveTab] = useState('analytics');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
+  const [backupInfo, setBackupInfo] = useState(null);
   
   // Форма для лимитов
   const [limitForm, setLimitForm] = useState({
@@ -294,6 +298,99 @@ function AdminSettings() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Резервное копирование данных */}
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>Резервное копирование данных</h3>
+              <p style={{ fontSize: 14, color: '#A5B4FC', marginBottom: 16 }}>
+                Вы можете выгрузить все данные системы в один JSON-файл перед обновлением,
+                а затем загрузить его обратно после деплоя, чтобы восстановить состояние.
+              </p>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  onClick={async () => {
+                    try {
+                      const data = await exportData();
+                      const blob = new Blob([JSON.stringify(data, null, 2)], {
+                        type: 'application/json'
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+                      a.href = url;
+                      a.download = `otrabotki-backup-${ts}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                      setBackupInfo({
+                        type: 'export',
+                        timestamp: new Date().toLocaleString()
+                      });
+                    } catch (err) {
+                      alert(err.message || 'Ошибка при экспорте данных');
+                    }
+                  }}
+                >
+                  📥 Скачать JSON
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.exportButton}
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  📤 Загрузить JSON
+                </button>
+
+                <input
+                  type="file"
+                  accept="application/json"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    try {
+                      const text = await file.text();
+                      const json = JSON.parse(text);
+                      if (!window.confirm('Импорт перезапишет текущие данные на сервере. Продолжить?')) {
+                        return;
+                      }
+                      await importData(json);
+                      alert('Данные успешно импортированы. Перезагрузите страницу, чтобы увидеть обновления.');
+                      setBackupInfo({
+                        type: 'import',
+                        timestamp: new Date().toLocaleString(),
+                        fileName: file.name
+                      });
+                    } catch (err) {
+                      alert(err.message || 'Ошибка при импорте данных (проверьте JSON-файл)');
+                    }
+                  }}
+                />
+              </div>
+
+              {backupInfo && (
+                <p style={{ fontSize: 13, color: '#A5B4FC' }}>
+                  Последнее действие: <strong>{backupInfo.type === 'export' ? 'экспорт' : 'импорт'}</strong>{' '}
+                  — {backupInfo.timestamp}
+                  {backupInfo.fileName ? ` (файл: ${backupInfo.fileName})` : ''}
+                </p>
+              )}
+
+              <p style={{ fontSize: 12, color: '#F97373', marginTop: 12 }}>
+                Внимание: импорт полностью перезаписывает данные на сервере (пользователи, расписания, слоты, предметы и т.д.).
+                Всегда держите резервную копию перед обновлением.
+              </p>
             </div>
           </div>
         )}

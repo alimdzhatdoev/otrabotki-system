@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import config from './config/config.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { bootstrapData } from './services/bootstrapService.js';
 
 // Роуты
 import authRoutes from './routes/authRoutes.js';
@@ -86,5 +87,14 @@ app.listen(config.port, () => {
   console.log(`🚀 Сервер запущен на http://localhost:${config.port}`);
   console.log(`📁 Данные хранятся в: ${config.dataPath}`);
   console.log(`🌍 Режим: ${config.nodeEnv}`);
+
+  // Начальная инициализация базовых данных (админ, оператор и т.п.)
+  bootstrapData()
+    .then(() => {
+      console.log('✅ Bootstrap данных завершён (админ/оператор присутствуют)');
+    })
+    .catch((err) => {
+      console.error('❌ Ошибка при bootstrap данных:', err);
+    });
 });
 

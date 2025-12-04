@@ -10,7 +10,10 @@ import {
   saveSlots,
   getTeacherSchedules,
   saveTeacherSchedules,
-  getAttendance
+  getAttendance,
+  saveAttendance,
+  getSubjects,
+  saveSubjects
 } from '../services/fileDb.js';
 import { getAnalytics } from '../services/analyticsService.js';
 import { generateId } from '../utils/idGenerator.js';
@@ -165,6 +168,93 @@ export async function deleteUser(req, res, next) {
     }
 
     res.json({ message: 'Пользователь удалён' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Экспорт всех данных системы (бэкап)
+ * GET /api/admin/data-export
+ */
+export async function exportData(req, res, next) {
+  try {
+    const [users, slots, teacherSchedules, courses, subjects, attendance, limits] =
+      await Promise.all([
+        getUsers(),
+        getSlots(),
+        getTeacherSchedules(),
+        getCourses(),
+        getSubjects(),
+        getAttendance(),
+        getLimits()
+      ]);
+
+    res.json({
+      users,
+      slots,
+      teacherSchedules,
+      courses,
+      subjects,
+      attendance,
+      limits
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Импорт всех данных системы (восстановление из бэкапа)
+ * POST /api/admin/data-import
+ */
+export async function importData(req, res, next) {
+  try {
+    const {
+      users,
+      slots,
+      teacherSchedules,
+      courses,
+      subjects,
+      attendance,
+      limits
+    } = req.body || {};
+
+    // Простая валидация типов
+    if (users && !Array.isArray(users)) {
+      return res.status(400).json({ error: 'Поле users должно быть массивом' });
+    }
+    if (slots && !Array.isArray(slots)) {
+      return res.status(400).json({ error: 'Поле slots должно быть массивом' });
+    }
+    if (teacherSchedules && !Array.isArray(teacherSchedules)) {
+      return res.status(400).json({ error: 'Поле teacherSchedules должно быть массивом' });
+    }
+    if (courses && !Array.isArray(courses)) {
+      return res.status(400).json({ error: 'Поле courses должно быть массивом' });
+    }
+    if (subjects && !Array.isArray(subjects)) {
+      return res.status(400).json({ error: 'Поле subjects должно быть массивом' });
+    }
+    if (attendance && !Array.isArray(attendance)) {
+      return res.status(400).json({ error: 'Поле attendance должно быть массивом' });
+    }
+    if (limits && typeof limits !== 'object') {
+      return res.status(400).json({ error: 'Поле limits должно быть объектом' });
+    }
+
+    // Пишем только те файлы, которые реально пришли в бэкапе
+    await Promise.all([
+      users ? saveUsers(users) : Promise.resolve(),
+      slots ? saveSlots(slots) : Promise.resolve(),
+      teacherSchedules ? saveTeacherSchedules(teacherSchedules) : Promise.resolve(),
+      courses ? saveCourses(courses) : Promise.resolve(),
+      subjects ? saveSubjects(subjects) : Promise.resolve(),
+      attendance ? saveAttendance(attendance) : Promise.resolve(),
+      limits ? saveLimits(limits) : Promise.resolve()
+    ]);
+
+    res.json({ message: 'Данные успешно импортированы' });
   } catch (error) {
     next(error);
   }

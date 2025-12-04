@@ -119,3 +119,20 @@ export async function getRequests() {
   return await get('/admin/requests');
 }
 
+/**
+ * Экспорт всех данных системы (бэкап)
+ * @returns {Promise<object>}
+ */
+export async function exportData() {
+  return await get('/admin/data-export');
+}
+
+/**
+ * Импорт всех данных системы (восстановление из бэкапа)
+ * @param {object} data - объект с данными (users, slots, teacherSchedules, courses, subjects, attendance, limits)
+ * @returns {Promise<object>}
+ */
+export async function importData(data) {
+  return await post('/admin/data-import', data);
+}
+

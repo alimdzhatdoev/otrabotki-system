@@ -14,7 +14,9 @@ import {
   updateCourse,
   addSubjectToCourse,
   deleteSubjectFromCourse,
-  getRequests
+  getRequests,
+  exportData,
+  importData
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -61,6 +63,12 @@ router.delete('/courses/:id/subjects/:subject', deleteSubjectFromCourse);
 
 // GET /api/admin/requests - все заявки
 router.get('/requests', getRequests);
+
+// GET /api/admin/data-export - экспорт всех данных
+router.get('/data-export', exportData);
+
+// POST /api/admin/data-import - импорт всех данных
+router.post('/data-import', importData);
 
 export default router;
 
