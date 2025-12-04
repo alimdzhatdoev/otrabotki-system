@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Runtime data (JSON-хранилище бэкенда) — не храним в git, чтобы не затирать при обновлениях
+server/data/*.json

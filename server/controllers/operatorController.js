@@ -278,7 +278,8 @@ export async function updateSlot(req, res, next) {
         return res.status(400).json({ error: 'Выбранный преподаватель не найден' });
       }
       // Проверяем, что у преподавателя есть этот предмет
-      if (!Array.isArray(teacher.subjects) || !teacher.subjects.includes(baseUpdatedSlot.subject)) {
+      // Используем subject исходного слота (предмет при редактировании не меняем)
+      if (!Array.isArray(teacher.subjects) || !teacher.subjects.includes(slot.subject)) {
         return res.status(400).json({ error: 'У выбранного преподавателя нет этого предмета' });
       }
       newTeacherId = teacher.id;
