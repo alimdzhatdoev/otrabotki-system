@@ -17,39 +17,52 @@ export async function generateSlotsFromSchedules(weeksAhead = 4) {
   const newSlots = [];
 
   for (const schedule of schedules) {
+    // Поддержка старого формата (courseId) и нового (courseIds)
+    let courseIds = [];
+    if (schedule.courseIds && Array.isArray(schedule.courseIds) && schedule.courseIds.length > 0) {
+      courseIds = schedule.courseIds;
+    } else if (schedule.courseId) {
+      courseIds = [schedule.courseId];
+    }
+    
     // Находим первый день недели для этого расписания
     const firstSlotDate = getNextDayOfWeek(schedule.dayOfWeek, today);
     
-    for (let week = 0; week < weeksAhead; week++) {
-      // Вычисляем дату для каждой недели
-      const slotDate = new Date(firstSlotDate);
-      slotDate.setDate(firstSlotDate.getDate() + week * 7);
-      
-      // Пропускаем прошлые даты
-      if (slotDate < today) continue;
+    // Создаем слоты для каждого курса
+    for (const courseId of courseIds) {
+      for (let week = 0; week < weeksAhead; week++) {
+        // Вычисляем дату для каждой недели
+        const slotDate = new Date(firstSlotDate);
+        slotDate.setDate(firstSlotDate.getDate() + week * 7);
+        
+        // Пропускаем прошлые даты
+        if (slotDate < today) continue;
 
-      const dateStr = formatDate(slotDate);
+        const dateStr = formatDate(slotDate);
 
-      // Проверяем, нет ли уже такого слота
-      const existingSlot = existingSlots.find(s => 
-        s.date === dateStr &&
-        s.teacherId === schedule.teacherId &&
-        s.timeFrom === schedule.timeFrom &&
-        s.subject === schedule.subject
-      );
+        // Проверяем, нет ли уже такого слота
+        const existingSlot = existingSlots.find(s => 
+          s.date === dateStr &&
+          s.teacherId === schedule.teacherId &&
+          s.timeFrom === schedule.timeFrom &&
+          s.subject === schedule.subject &&
+          s.courseId === courseId
+        );
 
-      if (!existingSlot) {
-        newSlots.push({
-          id: generateId('slot'),
-          courseId: schedule.courseId,
-          subject: schedule.subject,
-          date: dateStr,
-          timeFrom: schedule.timeFrom,
-          timeTo: schedule.timeTo,
-          capacity: schedule.capacity,
-          teacherId: schedule.teacherId,
-          students: []
-        });
+        if (!existingSlot) {
+          newSlots.push({
+            id: generateId('slot'),
+            scheduleId: schedule.id,
+            courseId: courseId,
+            subject: schedule.subject,
+            date: dateStr,
+            timeFrom: schedule.timeFrom,
+            timeTo: schedule.timeTo,
+            capacity: schedule.capacity,
+            teacherId: schedule.teacherId,
+            students: []
+          });
+        }
       }
     }
   }
@@ -74,25 +87,35 @@ export function generateSlotsFromSchedule(schedule, firstSlotDate, weeksAhead = 
   const newSlots = [];
   const startDate = new Date(firstSlotDate + 'T00:00:00');
   
-  // Генерируем слоты на указанное количество недель
-  for (let week = 0; week < weeksAhead; week++) {
-    const slotDate = new Date(startDate);
-    slotDate.setDate(startDate.getDate() + week * 7);
-    
-    const dateStr = formatDate(slotDate);
-    
-    newSlots.push({
-      id: generateId('slot'),
-      scheduleId: schedule.id,
-      courseId: schedule.courseId,
-      subject: schedule.subject,
-      date: dateStr,
-      timeFrom: schedule.timeFrom,
-      timeTo: schedule.timeTo,
-      capacity: schedule.capacity,
-      teacherId: schedule.teacherId,
-      students: []
-    });
+  // Поддержка старого формата (courseId) и нового (courseIds)
+  let courseIds = [];
+  if (schedule.courseIds && Array.isArray(schedule.courseIds) && schedule.courseIds.length > 0) {
+    courseIds = schedule.courseIds;
+  } else if (schedule.courseId) {
+    courseIds = [schedule.courseId];
+  }
+  
+  // Генерируем слоты на указанное количество недель для каждого курса
+  for (const courseId of courseIds) {
+    for (let week = 0; week < weeksAhead; week++) {
+      const slotDate = new Date(startDate);
+      slotDate.setDate(startDate.getDate() + week * 7);
+      
+      const dateStr = formatDate(slotDate);
+      
+      newSlots.push({
+        id: generateId('slot'),
+        scheduleId: schedule.id,
+        courseId: courseId,
+        subject: schedule.subject,
+        date: dateStr,
+        timeFrom: schedule.timeFrom,
+        timeTo: schedule.timeTo,
+        capacity: schedule.capacity,
+        teacherId: schedule.teacherId,
+        students: []
+      });
+    }
   }
   
   return newSlots;

@@ -14,6 +14,7 @@ import {
   getSubjects,
   updateSlot as updateSlotApi
 } from '../api/operatorApi';
+import { Autocomplete, TextField, Chip } from '@mui/material';
 import Loader from '../components/Loader';
 import styles from './OperatorSchedule.module.css';
 
@@ -51,7 +52,7 @@ function OperatorSchedule() {
   const [formData, setFormData] = useState({
     teacherId: '',
     subject: '',
-    courseId: 1,
+    selectedCourses: [], // Массив объектов курсов для Autocomplete
     dayOfWeek: 0, // 0 = Понедельник (первый день недели)
     timeFrom: '',
     timeTo: '',
@@ -156,7 +157,15 @@ function OperatorSchedule() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: ['courseId', 'dayOfWeek', 'capacity'].includes(name) ? parseInt(value) : value
+      [name]: ['dayOfWeek', 'capacity'].includes(name) ? parseInt(value) : value
+    }));
+  };
+
+  // Обработка изменения выбранных курсов (для Autocomplete)
+  const handleCoursesChange = (event, newValue) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedCourses: newValue
     }));
   };
 
@@ -165,13 +174,18 @@ function OperatorSchedule() {
     e.preventDefault();
     
     // Валидация
-    if (!formData.teacherId || !formData.subject || !formData.timeFrom || !formData.timeTo) {
+    if (!formData.teacherId || !formData.subject || !formData.timeFrom || !formData.timeTo || formData.selectedCourses.length === 0) {
       return;
     }
     
     try {
       setCreatingSchedule(true);
-      const response = await createTeacherSchedule(formData);
+      // Преобразуем выбранные курсы в массив ID для отправки на сервер
+      const scheduleData = {
+        ...formData,
+        courseIds: formData.selectedCourses.map(course => course.id)
+      };
+      const response = await createTeacherSchedule(scheduleData);
       
       // Генерируем слоты автоматически для созданного расписания
       if (response.schedule?.id) {
@@ -192,7 +206,7 @@ function OperatorSchedule() {
       setFormData({
         teacherId: '',
         subject: '',
-        courseId: 1,
+        selectedCourses: [],
         dayOfWeek: 0, // 0 = Понедельник
         timeFrom: '',
         timeTo: '',
@@ -238,11 +252,19 @@ function OperatorSchedule() {
     }
   };
 
-  // Получить предметы для выбранного курса (для формы расписания)
-  const getSubjectsForCourse = (courseId) => {
-    const course = courses.find(c => c.id === courseId);
-    if (!course || !course.subjectIds) return [];
-    return subjects.filter(s => course.subjectIds.includes(s.id));
+  // Получить предметы для выбранных курсов (для формы расписания)
+  const getSubjectsForCourses = (selectedCourses) => {
+    if (!Array.isArray(selectedCourses) || selectedCourses.length === 0) return [];
+    
+    // Собираем все предметы из всех выбранных курсов
+    const allSubjectIds = new Set();
+    selectedCourses.forEach(course => {
+      if (course && course.subjectIds) {
+        course.subjectIds.forEach(subjectId => allSubjectIds.add(subjectId));
+      }
+    });
+    
+    return subjects.filter(s => allSubjectIds.has(s.id));
   };
 
   // Получить предметы преподавателя
@@ -251,7 +273,7 @@ function OperatorSchedule() {
     return teacher ? teacher.subjects : [];
   };
 
-  const currentCourseSubjects = getSubjectsForCourse(formData.courseId).map(s => s.name);
+  const currentCourseSubjects = getSubjectsForCourses(formData.selectedCourses).map(s => s.name);
   const currentTeacherSubjects = formData.teacherId ? getTeacherSubjects(formData.teacherId) : [];
 
   // Дни недели: 0 = Понедельник, 1 = Вторник, ..., 6 = Воскресенье
@@ -326,7 +348,7 @@ function OperatorSchedule() {
               <tr>
                 <th>Преподаватель</th>
                 <th>Предмет</th>
-                <th>Курс</th>
+                <th>Курсы</th>
                 <th>День недели</th>
                 <th>Время</th>
                 <th>Мест</th>
@@ -343,13 +365,30 @@ function OperatorSchedule() {
               ) : (
                 schedules.map(schedule => {
                   const teacher = teachers.find(t => t.id === schedule.teacherId);
-                  const course = schedule.course || courses.find(c => c.id === schedule.courseId);
+                  
+                  // Поддержка старого формата (course/courseId) и нового (courses/courseIds)
+                  let scheduleCourses = [];
+                  if (schedule.courses && Array.isArray(schedule.courses) && schedule.courses.length > 0) {
+                    scheduleCourses = schedule.courses;
+                  } else if (schedule.courseIds && Array.isArray(schedule.courseIds)) {
+                    scheduleCourses = schedule.courseIds
+                      .map(id => courses.find(c => c.id === id))
+                      .filter(Boolean)
+                      .map(course => ({ id: course.id, name: course.name }));
+                  } else if (schedule.course) {
+                    scheduleCourses = [schedule.course];
+                  } else if (schedule.courseId) {
+                    const course = courses.find(c => c.id === schedule.courseId);
+                    if (course) scheduleCourses = [{ id: course.id, name: course.name }];
+                  }
+                  
+                  const courseNames = scheduleCourses.map(c => c.name).join(', ') || 'Не указан';
                   
                   return (
                     <tr key={schedule.id}>
                       <td>{teacher?.fio || schedule.teacher?.fio}</td>
                       <td>{schedule.subject}</td>
-                      <td>{course?.name}</td>
+                      <td>{courseNames}</td>
                       <td>{daysOfWeek[schedule.dayOfWeek]}</td>
                       <td>{schedule.timeFrom} - {schedule.timeTo}</td>
                       <td>{schedule.capacity}</td>
@@ -513,17 +552,108 @@ function OperatorSchedule() {
                   </select>
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label}>Курс</label>
-                  <select
-                    name="courseId"
-                    value={formData.courseId}
-                    onChange={handleInputChange}
-                    className={styles.input}
-                  >
-                    {courses.map(course => (
-                      <option key={course.id} value={course.id}>{course.name}</option>
-                    ))}
-                  </select>
+                  <label className={styles.label}>Курсы (можно выбрать несколько)</label>
+                  <Autocomplete
+                    multiple
+                    options={courses}
+                    getOptionLabel={(option) => option.name || ''}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    value={formData.selectedCourses}
+                    onChange={handleCoursesChange}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Выберите курсы"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: '#1A2140',
+                            color: '#FFFFFF',
+                            '& fieldset': {
+                              borderColor: 'rgba(255, 255, 255, 0.04)',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#5B5FFF',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#5B5FFF',
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            color: '#FFFFFF',
+                          },
+                          '& .MuiInputBase-input::placeholder': {
+                            color: 'rgba(255, 255, 255, 0.5)',
+                          },
+                        }}
+                      />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          {...getTagProps({ index })}
+                          key={option.id}
+                          label={option.name}
+                          sx={{
+                            backgroundColor: '#5B5FFF',
+                            color: '#FFFFFF',
+                            '& .MuiChip-deleteIcon': {
+                              color: '#FFFFFF',
+                            },
+                          }}
+                        />
+                      ))
+                    }
+                    componentsProps={{
+                      popper: {
+                        sx: {
+                          zIndex: 2000,
+                          '& .MuiPaper-root': {
+                            backgroundColor: '#1A2140 !important',
+                            color: '#FFFFFF !important',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            '& .MuiAutocomplete-listbox': {
+                              backgroundColor: '#1A2140',
+                              color: '#FFFFFF',
+                              '& .MuiAutocomplete-option': {
+                                backgroundColor: '#1A2140',
+                                color: '#FFFFFF !important',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(91, 95, 255, 0.3) !important',
+                                },
+                                '&[aria-selected="true"]': {
+                                  backgroundColor: '#5B5FFF !important',
+                                  color: '#FFFFFF !important',
+                                },
+                                '&.Mui-focused': {
+                                  backgroundColor: 'rgba(91, 95, 255, 0.2) !important',
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    }}
+                    ListboxProps={{
+                      sx: {
+                        backgroundColor: '#1A2140',
+                        color: '#FFFFFF',
+                        '& .MuiAutocomplete-option': {
+                          backgroundColor: '#1A2140',
+                          color: '#FFFFFF !important',
+                          '&:hover': {
+                            backgroundColor: 'rgba(91, 95, 255, 0.3) !important',
+                          },
+                          '&[aria-selected="true"]': {
+                            backgroundColor: '#5B5FFF !important',
+                            color: '#FFFFFF !important',
+                          },
+                          '&.Mui-focused': {
+                            backgroundColor: 'rgba(91, 95, 255, 0.2) !important',
+                          },
+                        },
+                      },
+                    }}
+                  />
                 </div>
               </div>
               

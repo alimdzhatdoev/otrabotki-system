@@ -16,7 +16,19 @@ function Calendar({ slots, onSlotSelect, currentUser, userRole }) {
   };
 
   const allUsers = getAllUsers();
-  const [selectedDate, setSelectedDate] = useState(null);
+  
+  // Форматирование даты в формат YYYY-MM-DD
+  const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  // Инициализация сегодняшней даты
+  const todayDateStr = formatDate(new Date());
+  
+  const [selectedDate, setSelectedDate] = useState(todayDateStr);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Получить дни текущего месяца
@@ -112,7 +124,7 @@ function Calendar({ slots, onSlotSelect, currentUser, userRole }) {
   }
 
   return (
-    <div className={`${styles.container} ${selectedDate && selectedDaySlots.length > 0 ? styles.containerWithSlots : styles.containerFullWidth}`}>
+    <div className={`${styles.container} ${selectedDate ? styles.containerWithSlots : styles.containerFullWidth}`}>
       <div className={styles.calendarWrapper}>
         <div className={styles.header}>
           <button onClick={prevMonth} className={styles.navButton}>
@@ -137,16 +149,22 @@ function Calendar({ slots, onSlotSelect, currentUser, userRole }) {
         </div>
       </div>
 
-      {selectedDate && selectedDaySlots.length > 0 && (
+      {selectedDate && (
         <div className={styles.slotsPanel}>
           <h4 className={styles.slotsPanelTitle}>
             Слоты на {new Date(selectedDate).toLocaleDateString('ru-RU')}
           </h4>
           <div className={styles.slotsList}>
-            {selectedDaySlots.map(slot => {
-              const isAvailable = slot.students.length < slot.capacity;
-              const isBooked = currentUser && slot.students.includes(currentUser.id);
-              const teacher = allUsers.find(u => u.id === slot.teacherId);
+            {selectedDaySlots.length === 0 ? (
+              <div style={{ color: '#A5B4FC', textAlign: 'center', padding: '20px' }}>
+                На эту дату нет доступных слотов
+              </div>
+            ) : (
+              selectedDaySlots.map(slot => {
+              const isAvailable = (slot.bookedCount || slot.students?.length || 0) < slot.capacity;
+              const isBooked = currentUser && (slot.isBooked || (slot.students && slot.students.includes(currentUser.id)));
+              // Используем информацию о преподавателе из API, если доступна, иначе ищем в локальных данных
+              const teacher = slot.teacher || allUsers.find(u => u.id === slot.teacherId);
               
               return (
                 <div
@@ -159,10 +177,10 @@ function Calendar({ slots, onSlotSelect, currentUser, userRole }) {
                     </div>
                     <div className={styles.slotSubject}>{slot.subject}</div>
                     {userRole === 'student' && teacher && (
-                      <div className={styles.slotTeacher}>👨‍🏫 {teacher.fio}</div>
+                      <div className={styles.slotTeacher}>{teacher.fio || teacher.name || 'Не указан'}</div>
                     )}
                     <div className={styles.slotCapacity}>
-                      {slot.students.length}/{slot.capacity}
+                      {slot.bookedCount || slot.students?.length || 0}/{slot.capacity}
                     </div>
                   </div>
                   {isBooked ? (
@@ -178,7 +196,7 @@ function Calendar({ slots, onSlotSelect, currentUser, userRole }) {
                   ) : null}
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}

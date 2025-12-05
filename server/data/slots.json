@@ -1,1 +1,98 @@
-[]
+[
+  {
+    "id": "slot_1764926187430_o68ua3dg6",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-08",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_5n4dn9tt7",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-15",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_x075wmt5m",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-22",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_nd2wpkg1t",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 1,
+    "subject": "Биология",
+    "date": "2025-12-29",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_fuh8j5mgn",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-08",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_w2t2urt8c",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-15",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_lfrdii9qr",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-22",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  },
+  {
+    "id": "slot_1764926187430_xf8m4fas1",
+    "scheduleId": "id_1764926187213_798m6j18e",
+    "courseId": 2,
+    "subject": "Биология",
+    "date": "2025-12-29",
+    "timeFrom": "12:30",
+    "timeTo": "13:00",
+    "capacity": 15,
+    "teacherId": "t_1764606779206_seofmp78o",
+    "students": []
+  }
+]

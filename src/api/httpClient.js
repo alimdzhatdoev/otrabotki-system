@@ -90,3 +90,4 @@ export function del(endpoint, options = {}) {
 export default { get, post, patch, delete: del };
 
 
+

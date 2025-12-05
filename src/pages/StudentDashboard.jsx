@@ -65,8 +65,13 @@ function StudentDashboard() {
   // Получить курс студента
   const studentCourse = courses.find(c => c.id === currentUser.course);
   
+  // Получить уникальные предметы из доступных слотов
+  const availableSubjects = slots && slots.length > 0 
+    ? Array.from(new Set(slots.map(slot => slot.subject).filter(Boolean)))
+    : [];
+  
   // Фильтрация слотов (уже отфильтрованы на бэкенде, но можно дополнительно)
-  const availableSlots = slots.filter(slot => {
+  const availableSlots = (slots || []).filter(slot => {
     const matchesSubject = !selectedSubject || slot.subject === selectedSubject;
     return matchesSubject;
   });
@@ -160,7 +165,7 @@ function StudentDashboard() {
           className={styles.filterSelect}
         >
           <option value="">Все предметы</option>
-          {studentCourse?.subjects.map(subject => (
+          {availableSubjects.map(subject => (
             <option key={subject} value={subject}>{subject}</option>
           ))}
         </select>
@@ -192,7 +197,7 @@ function StudentDashboard() {
                     <div className={styles.bookingDetails}>
                       <span>📅 {new Date(slot.date).toLocaleDateString('ru-RU')}</span>
                       <span>🕐 {slot.timeFrom} - {slot.timeTo}</span>
-                      <span>👨‍🏫 {slot.teacher?.fio || 'Не указан'}</span>
+                      <span>{slot.teacher?.fio || 'Не указан'}</span>
                     </div>
                   </div>
                   <button

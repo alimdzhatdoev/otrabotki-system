@@ -28,15 +28,30 @@ export async function getTeacherSchedulesList(req, res, next) {
     const users = await getUsers();
     const courses = await getCourses();
     
-    // Добавляем информацию о преподавателе и курсе
+    // Добавляем информацию о преподавателе и курсах
     const schedulesWithDetails = schedules.map(schedule => {
       const teacher = users.find(u => u.id === schedule.teacherId);
-      const course = courses.find(c => c.id === schedule.courseId);
+      
+      // Поддержка старого формата (courseId) и нового (courseIds)
+      let scheduleCourseIds = [];
+      if (schedule.courseIds && Array.isArray(schedule.courseIds)) {
+        scheduleCourseIds = schedule.courseIds;
+      } else if (schedule.courseId) {
+        scheduleCourseIds = [schedule.courseId];
+      }
+      
+      const scheduleCourses = scheduleCourseIds
+        .map(id => courses.find(c => c.id === id))
+        .filter(Boolean)
+        .map(course => ({ id: course.id, name: course.name }));
       
       return {
         ...schedule,
         teacher: teacher ? { id: teacher.id, fio: teacher.fio } : null,
-        course: course ? { id: course.id, name: course.name } : null
+        courses: scheduleCourses,
+        course: scheduleCourses.length > 0 ? scheduleCourses[0] : null, // Для обратной совместимости
+        courseId: scheduleCourseIds.length > 0 ? scheduleCourseIds[0] : null, // Для обратной совместимости
+        courseIds: scheduleCourseIds
       };
     });
     
@@ -52,10 +67,18 @@ export async function getTeacherSchedulesList(req, res, next) {
  */
 export async function createTeacherSchedule(req, res, next) {
   try {
-    const { teacherId, subject, courseId, dayOfWeek, timeFrom, timeTo, capacity } = req.body;
+    const { teacherId, subject, courseId, courseIds, dayOfWeek, timeFrom, timeTo, capacity } = req.body;
 
-    if (!teacherId || !subject || !courseId || dayOfWeek === undefined || !timeFrom || !timeTo || !capacity) {
-      return res.status(400).json({ error: 'Все поля обязательны' });
+    // Поддержка старого формата (один курс) и нового (несколько курсов)
+    let courseIdsArray = [];
+    if (courseIds && Array.isArray(courseIds) && courseIds.length > 0) {
+      courseIdsArray = courseIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+    } else if (courseId) {
+      courseIdsArray = [parseInt(courseId)].filter(id => !isNaN(id));
+    }
+
+    if (!teacherId || !subject || courseIdsArray.length === 0 || dayOfWeek === undefined || !timeFrom || !timeTo || !capacity) {
+      return res.status(400).json({ error: 'Все поля обязательны, включая хотя бы один курс' });
     }
 
     const schedules = await getTeacherSchedules();
@@ -69,7 +92,7 @@ export async function createTeacherSchedule(req, res, next) {
       id: generateId(),
       teacherId,
       subject,
-      courseId,
+      courseIds: courseIdsArray, // Массив курсов
       dayOfWeek: parseInt(dayOfWeek),
       timeFrom,
       timeTo,
