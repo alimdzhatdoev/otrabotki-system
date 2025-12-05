@@ -10,7 +10,9 @@ import {
   updateUser,
   deleteUser,
   exportData,
-  importData
+  importData,
+  getTeacherSlots,
+  getSlotStudents
 } from '../api/adminApi';
 import { getCourses } from '../api/commonApi';
 import Loader from '../components/Loader';
@@ -38,6 +40,14 @@ function AdminSettings() {
   const [importingData, setImportingData] = useState(false);
   const [updatingTeacher, setUpdatingTeacher] = useState(false);
   const [deletingTeacher, setDeletingTeacher] = useState(null); // ID удаляемого преподавателя
+  
+  // Состояния для раскрывающихся списков в аналитике
+  const [expandedTeachers, setExpandedTeachers] = useState(new Set()); // Set<teacherId>
+  const [teacherSlots, setTeacherSlots] = useState({}); // { teacherId: [slots] }
+  const [loadingTeacherSlots, setLoadingTeacherSlots] = useState(new Set()); // Set<teacherId>
+  const [expandedSlots, setExpandedSlots] = useState(new Set()); // Set<slotId>
+  const [slotStudents, setSlotStudents] = useState({}); // { slotId: { students: [...] } }
+  const [loadingSlotStudents, setLoadingSlotStudents] = useState(new Set()); // Set<slotId>
   
   // Форма для лимитов
   const [limitForm, setLimitForm] = useState({
@@ -174,6 +184,62 @@ function AdminSettings() {
   const teacherStats = analytics?.teacherStats || [];
   const subjectStats = analytics?.subjectStats || {};
 
+  // Обработка клика на преподавателя
+  const handleTeacherClick = async (teacherId) => {
+    const newExpanded = new Set(expandedTeachers);
+    if (newExpanded.has(teacherId)) {
+      newExpanded.delete(teacherId);
+    } else {
+      newExpanded.add(teacherId);
+      // Загружаем слоты, если еще не загружены
+      if (!teacherSlots[teacherId]) {
+        const loadingSet = new Set(loadingTeacherSlots);
+        loadingSet.add(teacherId);
+        setLoadingTeacherSlots(loadingSet);
+        
+        try {
+          const slots = await getTeacherSlots(teacherId);
+          setTeacherSlots(prev => ({ ...prev, [teacherId]: slots }));
+        } catch (err) {
+          console.error('Ошибка загрузки слотов преподавателя:', err);
+          setError(err.message || 'Ошибка загрузки слотов');
+        } finally {
+          loadingSet.delete(teacherId);
+          setLoadingTeacherSlots(new Set(loadingSet));
+        }
+      }
+    }
+    setExpandedTeachers(newExpanded);
+  };
+
+  // Обработка клика на слот
+  const handleSlotClick = async (slotId) => {
+    const newExpanded = new Set(expandedSlots);
+    if (newExpanded.has(slotId)) {
+      newExpanded.delete(slotId);
+    } else {
+      newExpanded.add(slotId);
+      // Загружаем студентов, если еще не загружены
+      if (!slotStudents[slotId]) {
+        const loadingSet = new Set(loadingSlotStudents);
+        loadingSet.add(slotId);
+        setLoadingSlotStudents(loadingSet);
+        
+        try {
+          const data = await getSlotStudents(slotId);
+          setSlotStudents(prev => ({ ...prev, [slotId]: data }));
+        } catch (err) {
+          console.error('Ошибка загрузки студентов:', err);
+          setError(err.message || 'Ошибка загрузки студентов');
+        } finally {
+          loadingSet.delete(slotId);
+          setLoadingSlotStudents(new Set(loadingSet));
+        }
+      }
+    }
+    setExpandedSlots(newExpanded);
+  };
+
   if (loading && !analytics) {
     return <div className={styles.container}>Загрузка...</div>;
   }
@@ -257,6 +323,7 @@ function AdminSettings() {
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th style={{ width: '30px' }}></th>
                     <th>Преподаватель</th>
                     <th>Слотов</th>
                     <th>Заявок</th>
@@ -266,20 +333,266 @@ function AdminSettings() {
                   </tr>
                 </thead>
                 <tbody>
-                  {teacherStats.map(stat => (
-                    <tr key={stat.teacher.id}>
-                      <td>{stat.teacher.fio}</td>
-                      <td>{stat.slotsCount}</td>
-                      <td>{stat.requestsCount}</td>
-                      <td>{stat.attendedCount}</td>
-                      <td>{stat.completedCount}</td>
-                      <td>
-                        <span className={styles.percentBadge}>
-                          {stat.completionRate}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {teacherStats.map(stat => {
+                    const isExpanded = expandedTeachers.has(stat.teacher.id);
+                    const slots = teacherSlots[stat.teacher.id] || [];
+                    const isLoading = loadingTeacherSlots.has(stat.teacher.id);
+                    
+                    return (
+                      <React.Fragment key={stat.teacher.id}>
+                        <tr 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => handleTeacherClick(stat.teacher.id)}
+                        >
+                          <td>
+                            <span style={{ fontSize: '12px' }}>
+                              {isExpanded ? '▼' : '▶'}
+                            </span>
+                          </td>
+                          <td>{stat.teacher.fio}</td>
+                          <td>{stat.slotsCount}</td>
+                          <td>{stat.requestsCount}</td>
+                          <td>{stat.attendedCount}</td>
+                          <td>{stat.completedCount}</td>
+                          <td>
+                            <span className={styles.percentBadge}>
+                              {stat.completionRate}%
+                            </span>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan="7" style={{ padding: 0, borderTop: 'none' }}>
+                              <div style={{ 
+                                padding: '16px 24px', 
+                                background: 'rgba(91, 95, 255, 0.05)',
+                                borderTop: '1px solid rgba(255, 255, 255, 0.08)'
+                              }}>
+                                {isLoading ? (
+                                  <Loader size="small" message="Загрузка слотов..." />
+                                ) : slots.length === 0 ? (
+                                  <div style={{ color: '#A5B4FC', textAlign: 'center', padding: '20px' }}>
+                                    У этого преподавателя нет слотов
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <h4 style={{ 
+                                      color: '#FFFFFF', 
+                                      fontSize: '14px', 
+                                      fontWeight: 600,
+                                      marginBottom: '12px'
+                                    }}>
+                                      Слоты преподавателя ({slots.length})
+                                    </h4>
+                                    <table style={{ 
+                                      width: '100%', 
+                                      borderCollapse: 'collapse',
+                                      fontSize: '13px'
+                                    }}>
+                                      <thead>
+                                        <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                          <th style={{ 
+                                            padding: '8px', 
+                                            textAlign: 'left',
+                                            color: '#A5B4FC',
+                                            fontWeight: 500,
+                                            width: '30px'
+                                          }}></th>
+                                          <th style={{ 
+                                            padding: '8px', 
+                                            textAlign: 'left',
+                                            color: '#A5B4FC',
+                                            fontWeight: 500
+                                          }}>Дата</th>
+                                          <th style={{ 
+                                            padding: '8px', 
+                                            textAlign: 'left',
+                                            color: '#A5B4FC',
+                                            fontWeight: 500
+                                          }}>Время</th>
+                                          <th style={{ 
+                                            padding: '8px', 
+                                            textAlign: 'left',
+                                            color: '#A5B4FC',
+                                            fontWeight: 500
+                                          }}>Предмет</th>
+                                          <th style={{ 
+                                            padding: '8px', 
+                                            textAlign: 'left',
+                                            color: '#A5B4FC',
+                                            fontWeight: 500
+                                          }}>Курс</th>
+                                          <th style={{ 
+                                            padding: '8px', 
+                                            textAlign: 'left',
+                                            color: '#A5B4FC',
+                                            fontWeight: 500
+                                          }}>Записано</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {slots.map(slot => {
+                                          const isSlotExpanded = expandedSlots.has(slot.id);
+                                          const slotData = slotStudents[slot.id];
+                                          const isLoadingStudents = loadingSlotStudents.has(slot.id);
+                                          
+                                          return (
+                                            <React.Fragment key={slot.id}>
+                                              <tr 
+                                                style={{ 
+                                                  cursor: 'pointer',
+                                                  borderBottom: '1px solid rgba(255, 255, 255, 0.04)'
+                                                }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleSlotClick(slot.id);
+                                                }}
+                                              >
+                                                <td>
+                                                  <span style={{ fontSize: '12px' }}>
+                                                    {isSlotExpanded ? '▼' : '▶'}
+                                                  </span>
+                                                </td>
+                                                <td style={{ padding: '8px', color: '#FFFFFF' }}>
+                                                  {new Date(slot.date).toLocaleDateString('ru-RU')}
+                                                </td>
+                                                <td style={{ padding: '8px', color: '#FFFFFF' }}>
+                                                  {slot.timeFrom} - {slot.timeTo}
+                                                </td>
+                                                <td style={{ padding: '8px', color: '#FFFFFF' }}>
+                                                  {slot.subject}
+                                                </td>
+                                                <td style={{ padding: '8px', color: '#FFFFFF' }}>
+                                                  {slot.course?.name || '—'}
+                                                </td>
+                                                <td style={{ padding: '8px', color: '#FFFFFF' }}>
+                                                  {slot.students?.length || 0}/{slot.capacity}
+                                                </td>
+                                              </tr>
+                                              {isSlotExpanded && (
+                                                <tr>
+                                                  <td colSpan="6" style={{ 
+                                                    padding: 0, 
+                                                    borderTop: 'none',
+                                                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+                                                  }}>
+                                                    <div style={{ 
+                                                      padding: '16px 32px', 
+                                                      background: 'rgba(91, 95, 255, 0.03)'
+                                                    }}>
+                                                      {isLoadingStudents ? (
+                                                        <Loader size="small" message="Загрузка студентов..." />
+                                                      ) : slotData && slotData.students && slotData.students.length > 0 ? (
+                                                        <div>
+                                                          <h5 style={{ 
+                                                            color: '#FFFFFF', 
+                                                            fontSize: '13px', 
+                                                            fontWeight: 600,
+                                                            marginBottom: '12px'
+                                                          }}>
+                                                            Студенты ({slotData.students.length})
+                                                          </h5>
+                                                          <div style={{ display: 'grid', gap: '8px' }}>
+                                                            {slotData.students.map(student => (
+                                                              <div 
+                                                                key={student.id}
+                                                                style={{
+                                                                  display: 'flex',
+                                                                  justifyContent: 'space-between',
+                                                                  alignItems: 'center',
+                                                                  padding: '10px 12px',
+                                                                  background: 'rgba(255, 255, 255, 0.03)',
+                                                                  borderRadius: '8px',
+                                                                  border: '1px solid rgba(255, 255, 255, 0.05)'
+                                                                }}
+                                                              >
+                                                                <div>
+                                                                  <div style={{ 
+                                                                    color: '#FFFFFF', 
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 500
+                                                                  }}>
+                                                                    {student.fio}
+                                                                  </div>
+                                                                  <div style={{ 
+                                                                    color: '#A5B4FC', 
+                                                                    fontSize: '12px',
+                                                                    marginTop: '2px'
+                                                                  }}>
+                                                                    Группа {student.group}
+                                                                  </div>
+                                                                </div>
+                                                                <div style={{ 
+                                                                  display: 'flex', 
+                                                                  gap: '16px',
+                                                                  alignItems: 'center'
+                                                                }}>
+                                                                  <div style={{ 
+                                                                    display: 'flex', 
+                                                                    flexDirection: 'column',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                  }}>
+                                                                    <span style={{ 
+                                                                      fontSize: '11px', 
+                                                                      color: '#A5B4FC' 
+                                                                    }}>
+                                                                      Пришёл
+                                                                    </span>
+                                                                    <span style={{ 
+                                                                      fontSize: '16px',
+                                                                      color: student.attended ? '#4ADE80' : '#F87171'
+                                                                    }}>
+                                                                      {student.attended ? '✓' : '✗'}
+                                                                    </span>
+                                                                  </div>
+                                                                  <div style={{ 
+                                                                    display: 'flex', 
+                                                                    flexDirection: 'column',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                  }}>
+                                                                    <span style={{ 
+                                                                      fontSize: '11px', 
+                                                                      color: '#A5B4FC' 
+                                                                    }}>
+                                                                      Отработал
+                                                                    </span>
+                                                                    <span style={{ 
+                                                                      fontSize: '16px',
+                                                                      color: student.completed ? '#4ADE80' : '#F87171'
+                                                                    }}>
+                                                                      {student.completed ? '✓' : '✗'}
+                                                                    </span>
+                                                                  </div>
+                                                                </div>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      ) : (
+                                                        <div style={{ color: '#A5B4FC', textAlign: 'center', padding: '20px' }}>
+                                                          На этот слот не записалось студентов
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </td>
+                                                </tr>
+                                              )}
+                                            </React.Fragment>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

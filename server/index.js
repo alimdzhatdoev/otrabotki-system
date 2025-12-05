@@ -55,8 +55,14 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Увеличиваем лимит размера тела запроса для импорта больших JSON файлов
+// Используем большое значение - 50MB (52428800 байт)
+const maxRequestSize = 50 * 1024 * 1024; // 50MB
+console.log(`📦 Установлен лимит размера запроса: ${maxRequestSize} байт (${maxRequestSize / 1024 / 1024}MB)`);
+
+app.use(express.json({ limit: maxRequestSize }));
+app.use(express.urlencoded({ extended: true, limit: maxRequestSize }));
 
 // Логирование запросов (для разработки)
 if (config.nodeEnv === 'development') {

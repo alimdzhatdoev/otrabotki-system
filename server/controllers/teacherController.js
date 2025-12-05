@@ -34,17 +34,34 @@ export async function getMySlots(req, res, next) {
         }
         
         if (subject && slot.subject !== subject) return false;
-        if (courseId && slot.courseId !== parseInt(courseId)) return false;
+        
+        // Фильтр по курсу: проверяем вхождение в courseIds или совпадение с courseId
+        if (courseId) {
+          const courseIdNum = parseInt(courseId);
+          const hasCourse = (slot.courseIds && Array.isArray(slot.courseIds) && slot.courseIds.includes(courseIdNum)) ||
+                           (slot.courseId === courseIdNum);
+          if (!hasCourse) return false;
+        }
+        
         if (date && slot.date !== date) return false;
         
         return true;
       })
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(slot => {
-        const course = courses.find(c => c.id === slot.courseId);
+        // Для нового формата берем все курсы, для старого - один курс
+        let slotCourses = [];
+        if (slot.courseIds && Array.isArray(slot.courseIds) && slot.courseIds.length > 0) {
+          slotCourses = slot.courseIds.map(id => courses.find(c => c.id === id)).filter(Boolean);
+        } else if (slot.courseId) {
+          const course = courses.find(c => c.id === slot.courseId);
+          if (course) slotCourses = [course];
+        }
+        
         return {
           ...slot,
-          course: course ? { id: course.id, name: course.name } : null
+          course: slotCourses.length > 0 ? { id: slotCourses[0].id, name: slotCourses[0].name } : null,
+          courses: slotCourses.map(c => ({ id: c.id, name: c.name }))
         };
       });
 
@@ -75,6 +92,7 @@ export async function getSlotStudents(req, res, next) {
     }
 
     const users = await getUsers();
+    const courses = await getCourses();
     const attendance = await getAttendance();
 
     // Получаем студентов с их статусами посещаемости
@@ -83,11 +101,15 @@ export async function getSlotStudents(req, res, next) {
       const att = attendance.find(
         a => a.slotId === slotId && a.studentId === studentId
       );
+      
+      // Получаем курс студента
+      const studentCourse = student?.course ? courses.find(c => c.id === student.course) : null;
 
       return {
         id: student?.id,
         fio: student?.fio,
         group: student?.group,
+        course: studentCourse ? { id: studentCourse.id, name: studentCourse.name } : null,
         attended: att?.attended || false,
         completed: att?.completed || false
       };

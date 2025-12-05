@@ -16,7 +16,9 @@ import {
   deleteSubjectFromCourse,
   getRequests,
   exportData,
-  importData
+  importData,
+  getTeacherSlots,
+  getSlotStudentsForAdmin
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -69,6 +71,12 @@ router.get('/data-export', exportData);
 
 // POST /api/admin/data-import - импорт всех данных
 router.post('/data-import', importData);
+
+// GET /api/admin/teachers/:teacherId/slots - получить слоты преподавателя
+router.get('/teachers/:teacherId/slots', getTeacherSlots);
+
+// GET /api/admin/slots/:slotId/students - получить студентов слота
+router.get('/slots/:slotId/students', getSlotStudentsForAdmin);
 
 export default router;
 

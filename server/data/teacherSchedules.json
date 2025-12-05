@@ -1,15 +1,218 @@
 [
   {
-    "id": "id_1764926187213_798m6j18e",
-    "teacherId": "t_1764606779206_seofmp78o",
+    "id": "id_1764923367336_a8p8fzf8k",
+    "teacherId": "id_1764922643382_umhxz3kan",
     "subject": "Биология",
+    "courseId": 1,
+    "dayOfWeek": 2,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764923398487_vhkihwbch",
+    "teacherId": "id_1764922643382_umhxz3kan",
+    "subject": "Биология",
+    "courseId": 1,
+    "dayOfWeek": 5,
+    "timeFrom": "09:00",
+    "timeTo": "10:30",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764923431408_nd6ugjgyh",
+    "teacherId": "id_1764922819458_hnef036nn",
+    "subject": "Биология",
+    "courseId": 1,
+    "dayOfWeek": 3,
+    "timeFrom": "16:20",
+    "timeTo": "17:50",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764923467946_9bckovvy3",
+    "teacherId": "id_1764922819458_hnef036nn",
+    "subject": "Биология",
+    "courseId": 1,
+    "dayOfWeek": 4,
+    "timeFrom": "16:20",
+    "timeTo": "17:50",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764923560620_tw95yic4i",
+    "teacherId": "id_1764922766441_qmcqaeg2p",
+    "subject": "Биология",
+    "courseId": 1,
+    "dayOfWeek": 3,
+    "timeFrom": "14:30",
+    "timeTo": "16:10",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764923582140_s4rjlifby",
+    "teacherId": "id_1764922766441_qmcqaeg2p",
+    "subject": "Биология",
+    "courseId": 1,
+    "dayOfWeek": 5,
+    "timeFrom": "09:00",
+    "timeTo": "10:30",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764934750099_nb4olfd42",
+    "teacherId": "id_1764922885619_8oof0d30m",
+    "subject": "Анатомия",
     "courseIds": [
       1,
       2
     ],
     "dayOfWeek": 0,
-    "timeFrom": "12:30",
+    "timeFrom": "12:10",
     "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764934838284_ztg1765m1",
+    "teacherId": "id_1764922885619_8oof0d30m",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 4,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764934884611_b3h5w5dh3",
+    "teacherId": "id_1764922975190_4lqs8j5v2",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 1,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764934950891_xn4v5y5ve",
+    "teacherId": "id_1764922975190_4lqs8j5v2",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 3,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764935060474_aj3p4tcom",
+    "teacherId": "id_1764923024072_gyvjgb588",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 3,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764935237998_hcprevuir",
+    "teacherId": "id_1764923024072_gyvjgb588",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 1,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764935456652_5ktz3q5qx",
+    "teacherId": "id_1764922936511_t50es27zy",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 2,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764935543959_ej3jy7v7z",
+    "teacherId": "id_1764922936511_t50es27zy",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 0,
+    "timeFrom": "12:10",
+    "timeTo": "13:00",
+    "capacity": 8
+  },
+  {
+    "id": "id_1764935634164_r2baybz16",
+    "teacherId": "id_1764923075494_hwzru3zy0",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 3,
+    "timeFrom": "16:20",
+    "timeTo": "17:50",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764935732824_1aavhnvie",
+    "teacherId": "id_1764923151189_ve5vxkss9",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 5,
+    "timeFrom": "09:00",
+    "timeTo": "10:30",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764935830291_3ix1sq6rx",
+    "teacherId": "id_1764923075494_hwzru3zy0",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 5,
+    "timeFrom": "09:00",
+    "timeTo": "10:30",
+    "capacity": 15
+  },
+  {
+    "id": "id_1764936005806_e2885ksvy",
+    "teacherId": "id_1764923111106_2rlj01h4g",
+    "subject": "Анатомия",
+    "courseIds": [
+      1,
+      2
+    ],
+    "dayOfWeek": 4,
+    "timeFrom": "14:40",
+    "timeTo": "16:10",
     "capacity": 15
   }
 ]

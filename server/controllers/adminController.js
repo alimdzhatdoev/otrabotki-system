@@ -469,3 +469,81 @@ export async function getRequests(req, res, next) {
   }
 }
 
+/**
+ * Получение всех слотов преподавателя
+ * GET /api/admin/teachers/:teacherId/slots
+ */
+export async function getTeacherSlots(req, res, next) {
+  try {
+    const { teacherId } = req.params;
+    
+    const slots = await getSlots();
+    const courses = await getCourses();
+    
+    // Фильтруем слоты преподавателя (все, включая прошедшие)
+    const teacherSlots = slots
+      .filter(slot => String(slot.teacherId) === String(teacherId))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(slot => {
+        const course = courses.find(c => c.id === slot.courseId);
+        return {
+          ...slot,
+          course: course ? { id: course.id, name: course.name } : null
+        };
+      });
+
+    res.json(teacherSlots);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Получение списка студентов для слота (для админа)
+ * GET /api/admin/slots/:slotId/students
+ */
+export async function getSlotStudentsForAdmin(req, res, next) {
+  try {
+    const { slotId } = req.params;
+    
+    const slots = await getSlots();
+    const slot = slots.find(s => s.id === slotId);
+
+    if (!slot) {
+      return res.status(404).json({ error: 'Слот не найден' });
+    }
+
+    const users = await getUsers();
+    const attendance = await getAttendance();
+
+    // Получаем студентов с их статусами посещаемости
+    const students = slot.students.map(studentId => {
+      const student = users.find(u => u.id === studentId);
+      const att = attendance.find(
+        a => a.slotId === slotId && a.studentId === studentId
+      );
+
+      return {
+        id: student?.id,
+        fio: student?.fio,
+        group: student?.group,
+        attended: att?.attended || false,
+        completed: att?.completed || false
+      };
+    });
+
+    res.json({
+      slot: {
+        id: slot.id,
+        subject: slot.subject,
+        date: slot.date,
+        timeFrom: slot.timeFrom,
+        timeTo: slot.timeTo
+      },
+      students
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

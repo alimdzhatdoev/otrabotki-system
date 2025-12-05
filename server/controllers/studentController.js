@@ -28,8 +28,18 @@ export async function getAvailableSlots(req, res, next) {
     today.setHours(0, 0, 0, 0);
     
     let availableSlots = slots.filter(slot => {
-      // Только слоты для курса студента
-      if (slot.courseId !== student.course) return false;
+      // Проверяем, доступен ли слот для курса студента
+      let isAvailableForStudent = false;
+      
+      if (slot.courseIds && Array.isArray(slot.courseIds)) {
+        // Новый формат: проверяем, есть ли курс студента в массиве courseIds
+        isAvailableForStudent = slot.courseIds.includes(student.course);
+      } else if (slot.courseId !== null && slot.courseId !== undefined) {
+        // Старый формат: проверяем прямое совпадение
+        isAvailableForStudent = slot.courseId === student.course;
+      }
+      
+      if (!isAvailableForStudent) return false;
       
       // Фильтр по предмету
       if (subject && slot.subject !== subject) return false;
@@ -49,7 +59,11 @@ export async function getAvailableSlots(req, res, next) {
     // Добавляем информацию о заполненности и преподавателе
     availableSlots = availableSlots.map(slot => {
       const teacher = usersList.find(u => u.id === slot.teacherId);
-      const course = courses.find(c => c.id === slot.courseId);
+      // Для нового формата берем первый курс из массива, для старого - courseId
+      const slotCourseId = slot.courseIds && slot.courseIds.length > 0
+        ? slot.courseIds[0]
+        : slot.courseId;
+      const course = courses.find(c => c.id === slotCourseId);
       const isBooked = slot.students.includes(studentId);
       
       return {
@@ -216,7 +230,11 @@ export async function getMyBookings(req, res, next) {
       .filter(slot => slot.students.includes(studentId))
       .map(slot => {
         const teacher = users.find(u => u.id === slot.teacherId);
-        const course = courses.find(c => c.id === slot.courseId);
+        // Для нового формата берем первый курс из массива, для старого - courseId
+        const slotCourseId = slot.courseIds && slot.courseIds.length > 0
+          ? slot.courseIds[0]
+          : slot.courseId;
+        const course = courses.find(c => c.id === slotCourseId);
         
         return {
           ...slot,

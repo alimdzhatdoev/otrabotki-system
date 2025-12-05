@@ -136,3 +136,21 @@ export async function importData(data) {
   return await post('/admin/data-import', data);
 }
 
+/**
+ * Получение слотов преподавателя
+ * @param {string} teacherId - ID преподавателя
+ * @returns {Promise<Array>}
+ */
+export async function getTeacherSlots(teacherId) {
+  return await get(`/admin/teachers/${teacherId}/slots`);
+}
+
+/**
+ * Получение списка студентов для слота
+ * @param {string} slotId - ID слота
+ * @returns {Promise<object>}
+ */
+export async function getSlotStudents(slotId) {
+  return await get(`/admin/slots/${slotId}/students`);
+}
+

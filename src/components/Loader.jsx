@@ -22,3 +22,9 @@ function Loader({ message, size = 'medium', fullScreen = false }) {
 
 export default Loader;
 
+
+
+
+
+
+
