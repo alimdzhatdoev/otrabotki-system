@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getMySlots, getSlotStudents, updateAttendance, getStats } from '../api/teacherApi';
 import { getCourses } from '../api/commonApi';
 import Calendar from '../components/Calendar';
+import Loader from '../components/Loader';
 import styles from './TeacherDashboard.module.css';
 
 function TeacherDashboard() {
@@ -16,6 +17,9 @@ function TeacherDashboard() {
   const [courses, setCourses] = useState([]);
   const [stats, setStats] = useState({ totalSlots: 0, totalStudents: 0, totalAttended: 0, totalCompleted: 0 });
   const [loading, setLoading] = useState(true);
+  // Состояния загрузки для операций
+  const [updatingAttendance, setUpdatingAttendance] = useState(null); // { slotId, studentId }
+  const [loadingStudents, setLoadingStudents] = useState(null); // ID слота, для которого загружаются студенты
   
   // Фильтры
   const [filters, setFilters] = useState({
@@ -78,12 +82,15 @@ function TeacherDashboard() {
     }
     
     try {
+      setLoadingStudents(slotId);
       const data = await getSlotStudents(slotId);
       setSlotStudents(prev => ({ ...prev, [slotId]: data }));
       return data.students || [];
     } catch (err) {
       console.error('Ошибка загрузки студентов:', err);
       return [];
+    } finally {
+      setLoadingStudents(null);
     }
   };
 
@@ -122,11 +129,11 @@ function TeacherDashboard() {
   const toggleAttendance = async (slotId, studentId, currentAttended, slot) => {
     // Проверяем время
     if (!isSlotTimeActive(slot)) {
-      alert('Можно отмечать посещаемость только во время отработки');
       return;
     }
     
     try {
+      setUpdatingAttendance({ slotId, studentId });
       await updateAttendance(slotId, studentId, !currentAttended, undefined);
       // Перезагружаем данные слота
       const slotData = await getSlotStudents(slotId);
@@ -135,7 +142,9 @@ function TeacherDashboard() {
         [slotId]: slotData
       }));
     } catch (err) {
-      alert(err.message || 'Ошибка обновления посещаемости');
+      console.error('Ошибка обновления посещаемости:', err);
+    } finally {
+      setUpdatingAttendance(null);
     }
   };
 
@@ -143,11 +152,11 @@ function TeacherDashboard() {
   const toggleCompleted = async (slotId, studentId, currentCompleted, slot) => {
     // Проверяем время
     if (!isSlotTimeActive(slot)) {
-      alert('Можно отмечать отработку только во время отработки');
       return;
     }
     
     try {
+      setUpdatingAttendance({ slotId, studentId });
       await updateAttendance(slotId, studentId, undefined, !currentCompleted);
       // Перезагружаем данные слота
       const slotData = await getSlotStudents(slotId);
@@ -156,7 +165,9 @@ function TeacherDashboard() {
         [slotId]: slotData
       }));
     } catch (err) {
-      alert(err.message || 'Ошибка обновления статуса отработки');
+      console.error('Ошибка обновления статуса отработки:', err);
+    } finally {
+      setUpdatingAttendance(null);
     }
   };
 
@@ -367,8 +378,8 @@ function TeacherDashboard() {
                             const slotData = slotStudents[slot.id];
                             const students = slotData?.students || [];
                             
-                            if (students.length === 0) {
-                              return <p>Загрузка студентов...</p>;
+                            if (students.length === 0 || loadingStudents === slot.id) {
+                              return <Loader size="small" message="Загрузка студентов..." />;
                             }
                             
                             return students.map(student => {
@@ -392,7 +403,7 @@ function TeacherDashboard() {
                                               type="checkbox"
                                               checked={student.attended || false}
                                               onChange={() => toggleAttendance(slot.id, student.id, student.attended, slot)}
-                                              disabled={!isTimeActive}
+                                              disabled={!isTimeActive || (updatingAttendance?.slotId === slot.id && updatingAttendance?.studentId === student.id)}
                                               className={styles.checkbox}
                                               title={!isTimeActive ? 'Можно отмечать только во время отработки' : ''}
                                             />
@@ -406,7 +417,7 @@ function TeacherDashboard() {
                                               type="checkbox"
                                               checked={student.completed || false}
                                               onChange={() => toggleCompleted(slot.id, student.id, student.completed, slot)}
-                                              disabled={!isTimeActive}
+                                              disabled={!isTimeActive || (updatingAttendance?.slotId === slot.id && updatingAttendance?.studentId === student.id)}
                                               className={styles.checkbox}
                                               title={!isTimeActive ? 'Можно отмечать только во время отработки' : ''}
                                             />

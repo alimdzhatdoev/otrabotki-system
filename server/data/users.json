@@ -33,25 +33,5 @@
     "fio": "Иванов Иван Иванович",
     "group": "ПМ-131",
     "course": 2
-  },
-  {
-    "id": "id_1764839298957_si7ivt3th",
-    "login": "ivanovsergeypetrovich",
-    "password": "123",
-    "role": "teacher",
-    "fio": "Иванов Сергей Петрович",
-    "subjects": [
-      "Анатомия"
-    ]
-  },
-  {
-    "id": "id_1764840301493_ivklrlhx5",
-    "login": "petrovsergeyivanovich",
-    "password": "123",
-    "role": "teacher",
-    "fio": "Петров Сергей Иванович",
-    "subjects": [
-      "Биология"
-    ]
   }
 ]

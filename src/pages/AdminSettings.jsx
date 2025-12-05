@@ -13,6 +13,7 @@ import {
   importData
 } from '../api/adminApi';
 import { getCourses } from '../api/commonApi';
+import Loader from '../components/Loader';
 import styles from './AdminSettings.module.css';
 
 function AdminSettings() {
@@ -31,6 +32,12 @@ function AdminSettings() {
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const [backupInfo, setBackupInfo] = useState(null);
+  // Состояния загрузки для операций
+  const [updatingLimits, setUpdatingLimits] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
+  const [importingData, setImportingData] = useState(false);
+  const [updatingTeacher, setUpdatingTeacher] = useState(false);
+  const [deletingTeacher, setDeletingTeacher] = useState(null); // ID удаляемого преподавателя
   
   // Форма для лимитов
   const [limitForm, setLimitForm] = useState({
@@ -90,11 +97,14 @@ function AdminSettings() {
   const handleSaveLimits = async (e) => {
     e.preventDefault();
     try {
+      setUpdatingLimits(true);
       await updateLimits(limitForm);
       setLimits(limitForm);
-      alert('Лимиты обновлены!');
     } catch (err) {
-      alert(err.message || 'Ошибка при обновлении лимитов');
+      console.error('Ошибка при обновлении лимитов:', err);
+      setError(err.message || 'Ошибка при обновлении лимитов');
+    } finally {
+      setUpdatingLimits(false);
     }
   };
 
@@ -102,7 +112,6 @@ function AdminSettings() {
   // Экспорт в CSV
   const exportToCSV = (data, filename) => {
     if (data.length === 0) {
-      alert('Нет данных для экспорта');
       return;
     }
     
@@ -313,6 +322,7 @@ function AdminSettings() {
                   className={styles.exportButton}
                   onClick={async () => {
                     try {
+                      setExportingData(true);
                       const data = await exportData();
                       const blob = new Blob([JSON.stringify(data, null, 2)], {
                         type: 'application/json'
@@ -331,9 +341,13 @@ function AdminSettings() {
                         timestamp: new Date().toLocaleString()
                       });
                     } catch (err) {
-                      alert(err.message || 'Ошибка при экспорте данных');
+                      console.error('Ошибка при экспорте данных:', err);
+                      setError(err.message || 'Ошибка при экспорте данных');
+                    } finally {
+                      setExportingData(false);
                     }
                   }}
+                  disabled={exportingData}
                 >
                   📥 Скачать JSON
                 </button>
@@ -360,20 +374,25 @@ function AdminSettings() {
                     const file = e.target.files && e.target.files[0];
                     if (!file) return;
                     try {
+                      setImportingData(true);
                       const text = await file.text();
                       const json = JSON.parse(text);
                       if (!window.confirm('Импорт перезапишет текущие данные на сервере. Продолжить?')) {
                         return;
                       }
                       await importData(json);
-                      alert('Данные успешно импортированы. Перезагрузите страницу, чтобы увидеть обновления.');
                       setBackupInfo({
                         type: 'import',
                         timestamp: new Date().toLocaleString(),
                         fileName: file.name
                       });
+                      // Перезагружаем данные
+                      await loadData();
                     } catch (err) {
-                      alert(err.message || 'Ошибка при импорте данных (проверьте JSON-файл)');
+                      console.error('Ошибка при импорте данных:', err);
+                      setError(err.message || 'Ошибка при импорте данных (проверьте JSON-файл)');
+                    } finally {
+                      setImportingData(false);
                     }
                   }}
                 />
@@ -442,13 +461,17 @@ function AdminSettings() {
                           onClick={async () => {
                             if (!window.confirm('Удалить этого преподавателя?')) return;
                             try {
+                              setDeletingTeacher(teacher.id);
                               await deleteUser(teacher.id);
                               const usersData = await getUsers();
                               setTeachers(usersData.filter(u => u.role === 'teacher'));
                             } catch (err) {
                               alert(err.message || 'Ошибка при удалении преподавателя');
+                            } finally {
+                              setDeletingTeacher(null);
                             }
                           }}
+                          disabled={deletingTeacher === teacher.id}
                         >
                           <span>🗑</span>
                           <span>Удалить</span>
@@ -599,14 +622,16 @@ function AdminSettings() {
 
       {/* Модалка редактирования преподавателя */}
       {editingTeacher && (
-        <div className={styles.modal} onClick={() => setEditingTeacher(null)}>
+        <div className={styles.modal} onClick={() => !updatingTeacher && setEditingTeacher(null)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {updatingTeacher && <Loader fullScreen message="Обновление преподавателя..." />}
             <h2 className={styles.modalTitle}>Изменить преподавателя</h2>
             <form
               className={styles.form}
               onSubmit={async (e) => {
                 e.preventDefault();
                 try {
+                  setUpdatingTeacher(true);
                   const subjects = teacherForm.subjectsText
                     .split(',')
                     .map(s => s.trim())
@@ -627,11 +652,13 @@ function AdminSettings() {
                   const usersData = await getUsers();
                   setTeachers(usersData.filter(u => u.role === 'teacher'));
 
-                  alert('Преподаватель обновлён');
                   setEditingTeacher(null);
                   setGeneratedTeacherPassword('');
                 } catch (err) {
-                  alert(err.message || 'Ошибка при обновлении преподавателя');
+                  console.error('Ошибка при обновлении преподавателя:', err);
+                  setError(err.message || 'Ошибка при обновлении преподавателя');
+                } finally {
+                  setUpdatingTeacher(false);
                 }
               }}
             >
@@ -711,12 +738,19 @@ function AdminSettings() {
                     setEditingTeacher(null);
                     setGeneratedTeacherPassword('');
                   }}
+                  disabled={updatingTeacher}
                 >
                   Отмена
                 </button>
-                <button type="submit" className={styles.submitButton}>
-                  Сохранить
+                <button 
+                  type="submit" 
+                  className={styles.submitButton}
+                  disabled={updatingTeacher}
+                >
+                  {updatingTeacher ? 'Сохранение...' : 'Сохранить'}
                 </button>
+                {exportingData && <Loader fullScreen message="Экспорт данных..." />}
+                {importingData && <Loader fullScreen message="Импорт данных..." />}
               </div>
             </form>
           </div>

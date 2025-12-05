@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getAvailableSlots, bookSlot, cancelBooking, getMyBookings, getLimitsInfo } from '../api/studentApi';
 import { getCourses } from '../api/commonApi';
 import Calendar from '../components/Calendar';
+import Loader from '../components/Loader';
 import styles from './StudentDashboard.module.css';
 
 function StudentDashboard() {
@@ -17,6 +18,9 @@ function StudentDashboard() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Состояния загрузки для операций
+  const [bookingSlot, setBookingSlot] = useState(null); // ID слота, на который записываются
+  const [cancelingBooking, setCancelingBooking] = useState(null); // ID слота, для которого отменяется запись
 
   // Загрузка данных при монтировании
   useEffect(() => {
@@ -71,23 +75,24 @@ function StudentDashboard() {
   const handleSlotSelect = async (slot) => {
     // Проверка: слот уже заполнен
     if (slot.bookedCount >= slot.capacity) {
-      alert('Все места заняты!');
       return;
     }
     
     // Проверка: студент уже записан
     if (slot.isBooked) {
-      alert('Вы уже записаны на эту отработку!');
       return;
     }
 
     try {
+      setBookingSlot(slot.id);
       await bookSlot(slot.id);
-      alert('Вы успешно записались на отработку!');
       // Перезагружаем данные
       await loadData();
     } catch (err) {
-      alert(err.message || 'Ошибка при записи на слот');
+      console.error('Ошибка при записи на слот:', err);
+      setError(err.message || 'Ошибка при записи на слот');
+    } finally {
+      setBookingSlot(null);
     }
   };
 
@@ -96,12 +101,15 @@ function StudentDashboard() {
     if (!confirm('Отменить запись на эту отработку?')) return;
     
     try {
+      setCancelingBooking(slotId);
       await cancelBooking(slotId);
-      alert('Запись отменена');
       // Перезагружаем данные
       await loadData();
     } catch (err) {
-      alert(err.message || 'Ошибка при отмене записи');
+      console.error('Ошибка при отмене записи:', err);
+      setError(err.message || 'Ошибка при отмене записи');
+    } finally {
+      setCancelingBooking(null);
     }
   };
 
@@ -111,6 +119,7 @@ function StudentDashboard() {
 
   return (
     <div className={styles.container}>
+      {bookingSlot && <Loader fullScreen message="Запись на отработку..." />}
       {error && (
         <div style={{ padding: '10px', background: '#fee', color: '#c00', marginBottom: '20px' }}>
           Ошибка: {error}
@@ -189,8 +198,9 @@ function StudentDashboard() {
                   <button
                     onClick={() => handleCancelBooking(slot.id)}
                     className={styles.bookingCancelButton}
+                    disabled={cancelingBooking === slot.id}
                   >
-                    Отменить
+                    {cancelingBooking === slot.id ? 'Отмена...' : 'Отменить'}
                   </button>
                 </div>
               );

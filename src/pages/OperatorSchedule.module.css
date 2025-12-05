@@ -382,7 +382,12 @@
 }
 
 .actionButton:disabled {
-  opacity: 0.3;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actionButtonDanger:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -498,9 +503,14 @@
   transition: all 0.2s;
 }
 
-.cancelButton:hover {
+.cancelButton:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.2);
   background-color: rgba(255, 255, 255, 0.02);
+}
+
+.cancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .submitButton {
@@ -514,8 +524,14 @@
   transition: all 0.2s;
 }
 
-.submitButton:hover {
+.submitButton:hover:not(:disabled) {
   background-color: #4A4FDD;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #3a3fa0;
 }
 
 /* Информация о слоте */

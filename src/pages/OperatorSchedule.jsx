@@ -14,6 +14,7 @@ import {
   getSubjects,
   updateSlot as updateSlotApi
 } from '../api/operatorApi';
+import Loader from '../components/Loader';
 import styles from './OperatorSchedule.module.css';
 
 function OperatorSchedule() {
@@ -32,6 +33,12 @@ function OperatorSchedule() {
   const [error, setError] = useState(null);
   const [weeksAhead, setWeeksAhead] = useState(4);
   const [editingSlot, setEditingSlot] = useState(null);
+  // Состояния загрузки для различных операций
+  const [creatingTeacher, setCreatingTeacher] = useState(false);
+  const [creatingSchedule, setCreatingSchedule] = useState(false);
+  const [deletingSchedule, setDeletingSchedule] = useState(null); // ID удаляемого расписания
+  const [updatingSlot, setUpdatingSlot] = useState(null); // ID обновляемого слота
+  const [loadingSlots, setLoadingSlots] = useState(null); // ID расписания, для которого загружаются слоты
   const [slotEditForm, setSlotEditForm] = useState({
     date: '',
     timeFrom: '',
@@ -99,11 +106,11 @@ function OperatorSchedule() {
     e.preventDefault();
     
     if (!newTeacher.fio || newTeacher.subjects.length === 0) {
-      alert('Заполните все поля!');
       return;
     }
 
     try {
+      setCreatingTeacher(true);
       const response = await createTeacher({
         fio: newTeacher.fio,
         subjects: newTeacher.subjects
@@ -122,7 +129,10 @@ function OperatorSchedule() {
       // Сброс формы
       setNewTeacher({ fio: '', subjects: [] });
     } catch (err) {
-      alert(err.message || 'Ошибка при создании преподавателя');
+      console.error('Ошибка при создании преподавателя:', err);
+      setError(err.message || 'Ошибка при создании преподавателя');
+    } finally {
+      setCreatingTeacher(false);
     }
   };
 
@@ -156,11 +166,11 @@ function OperatorSchedule() {
     
     // Валидация
     if (!formData.teacherId || !formData.subject || !formData.timeFrom || !formData.timeTo) {
-      alert('Заполните все поля!');
       return;
     }
     
     try {
+      setCreatingSchedule(true);
       const response = await createTeacherSchedule(formData);
       
       // Генерируем слоты автоматически для созданного расписания
@@ -172,11 +182,7 @@ function OperatorSchedule() {
           await generateSlots(response.schedule.id, weeksAhead);
         } catch (slotError) {
           console.error('Ошибка генерации слотов:', slotError);
-          const errorMessage = slotError.response?.data?.error || slotError.message || 'Неизвестная ошибка';
-          alert(`Расписание создано, но произошла ошибка при создании слотов: ${errorMessage}`);
         }
-      } else {
-        alert('Расписание создано, но не удалось получить ID для генерации слотов');
       }
       
       // Перезагружаем данные, чтобы увидеть созданные расписание и слоты
@@ -195,9 +201,11 @@ function OperatorSchedule() {
       setWeeksAhead(4);
       
       setShowModal(false);
-      alert('Расписание добавлено! Слоты созданы автоматически.');
     } catch (err) {
-      alert(err.message || 'Ошибка при создании расписания');
+      console.error('Ошибка при создании расписания:', err);
+      setError(err.message || 'Ошибка при создании расписания');
+    } finally {
+      setCreatingSchedule(false);
     }
   };
 
@@ -206,20 +214,27 @@ function OperatorSchedule() {
     if (!confirm('Удалить это расписание? (Связанные слоты также будут удалены)')) return;
     
     try {
+      setDeletingSchedule(scheduleId);
       await deleteTeacherSchedule(scheduleId);
       await loadData();
     } catch (err) {
       alert(err.message || 'Ошибка при удалении расписания');
+    } finally {
+      setDeletingSchedule(null);
     }
   };
 
   // Просмотр слотов расписания
   const handleViewSlots = async (schedule) => {
     try {
+      setLoadingSlots(schedule.id);
       const relatedSlots = await getScheduleSlots(schedule.id);
-      setSelectedSchedule({ ...schedule, relatedSlots });
+      setSelectedSchedule({ ...schedule, relatedSlots: relatedSlots || [] });
     } catch (err) {
-      alert(err.message || 'Ошибка при загрузке слотов');
+      console.error('Ошибка при загрузке слотов:', err);
+      setSelectedSchedule({ ...schedule, relatedSlots: [] });
+    } finally {
+      setLoadingSlots(null);
     }
   };
 
@@ -344,15 +359,17 @@ function OperatorSchedule() {
                             onClick={() => handleViewSlots(schedule)}
                             className={styles.actionButton}
                             title="Просмотр слотов"
+                            disabled={loadingSlots === schedule.id}
                           >
-                            📅
+                            {loadingSlots === schedule.id ? '⏳' : '📅'}
                           </button>
                           <button
                             onClick={() => handleDeleteSchedule(schedule.id)}
                             className={styles.actionButtonDanger}
                             title="Удалить расписание"
+                            disabled={deletingSchedule === schedule.id}
                           >
-                            ❌
+                            {deletingSchedule === schedule.id ? '⏳' : '❌'}
                           </button>
                         </div>
                       </td>
@@ -367,8 +384,9 @@ function OperatorSchedule() {
 
       {/* Модальное окно добавления преподавателя */}
       {showTeacherModal && (
-        <div className={styles.modal} onClick={() => !generatedCredentials && setShowTeacherModal(false)}>
+        <div className={styles.modal} onClick={() => !generatedCredentials && !creatingTeacher && setShowTeacherModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {creatingTeacher && <Loader fullScreen message="Создание преподавателя..." />}
             {!generatedCredentials ? (
               <>
                 <h2 className={styles.modalTitle}>Добавить преподавателя</h2>
@@ -425,14 +443,16 @@ function OperatorSchedule() {
                       type="button"
                       onClick={() => setShowTeacherModal(false)}
                       className={styles.cancelButton}
+                      disabled={creatingTeacher}
                     >
                       Отмена
                     </button>
                     <button
                       type="submit"
                       className={styles.submitButton}
+                      disabled={creatingTeacher}
                     >
-                      Создать преподавателя
+                      {creatingTeacher ? 'Создание...' : 'Создать преподавателя'}
                     </button>
                   </div>
                 </form>
@@ -471,8 +491,9 @@ function OperatorSchedule() {
 
       {/* Модальное окно добавления расписания */}
       {showModal && (
-        <div className={styles.modal} onClick={() => setShowModal(false)}>
+        <div className={styles.modal} onClick={() => !creatingSchedule && setShowModal(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {creatingSchedule && <Loader fullScreen message="Создание расписания и генерация слотов..." />}
             <h2 className={styles.modalTitle}>Добавить расписание преподавателя</h2>
             <form onSubmit={handleAddSchedule} className={styles.form}>
               <div className={styles.formRow}>
@@ -598,14 +619,16 @@ function OperatorSchedule() {
                   type="button"
                   onClick={() => setShowModal(false)}
                   className={styles.cancelButton}
+                  disabled={creatingSchedule}
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
                   className={styles.submitButton}
+                  disabled={creatingSchedule}
                 >
-                  Создать расписание
+                  {creatingSchedule ? 'Создание...' : 'Создать расписание'}
                 </button>
               </div>
             </form>
@@ -615,15 +638,18 @@ function OperatorSchedule() {
 
       {/* Модальное окно просмотра слотов */}
       {selectedSchedule && (
-        <div className={styles.modal} onClick={() => setSelectedSchedule(null)}>
+        <div className={styles.modal} onClick={() => !loadingSlots && setSelectedSchedule(null)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {loadingSlots === selectedSchedule.id && (
+              <Loader fullScreen message="Загрузка слотов..." />
+            )}
             <h2 className={styles.modalTitle}>Слоты расписания</h2>
             <div className={styles.scheduleInfo}>
               <p><strong>{selectedSchedule.subject}</strong></p>
               <p>{daysOfWeek[selectedSchedule.dayOfWeek]} • {selectedSchedule.timeFrom} - {selectedSchedule.timeTo}</p>
             </div>
             <div className={styles.slotsList}>
-              {selectedSchedule.relatedSlots.length === 0 ? (
+              {!selectedSchedule.relatedSlots || selectedSchedule.relatedSlots.length === 0 ? (
                 <p className={styles.emptyMessage}>Слоты ещё не созданы</p>
               ) : (
                 selectedSchedule.relatedSlots.map(slot => (
@@ -665,14 +691,18 @@ function OperatorSchedule() {
 
       {/* Модальное окно редактирования слота */}
       {editingSlot && (
-        <div className={styles.modal} onClick={() => setEditingSlot(null)}>
+        <div className={styles.modal} onClick={() => updatingSlot !== editingSlot?.id && setEditingSlot(null)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {updatingSlot === editingSlot?.id && (
+              <Loader fullScreen message="Обновление слота..." />
+            )}
             <h2 className={styles.modalTitle}>Редактировать слот</h2>
             <form
               className={styles.form}
               onSubmit={async (e) => {
                 e.preventDefault();
                 try {
+                  setUpdatingSlot(editingSlot.id);
                   const updates = {
                     date: slotEditForm.date,
                     timeFrom: slotEditForm.timeFrom,
@@ -688,7 +718,10 @@ function OperatorSchedule() {
                   setSelectedSchedule(null);
                 } catch (err) {
                   const message = err.response?.data?.error || err.message || 'Ошибка при обновлении слота';
-                  alert(message);
+                  console.error('Ошибка при обновлении слота:', err);
+                  setError(message);
+                } finally {
+                  setUpdatingSlot(null);
                 }
               }}
             >
@@ -784,11 +817,16 @@ function OperatorSchedule() {
                   type="button"
                   onClick={() => setEditingSlot(null)}
                   className={styles.cancelButton}
+                  disabled={updatingSlot === editingSlot?.id}
                 >
                   Отмена
                 </button>
-                <button type="submit" className={styles.submitButton}>
-                  Сохранить
+                <button 
+                  type="submit" 
+                  className={styles.submitButton}
+                  disabled={updatingSlot === editingSlot?.id}
+                >
+                  {updatingSlot === editingSlot?.id ? 'Сохранение...' : 'Сохранить'}
                 </button>
               </div>
             </form>

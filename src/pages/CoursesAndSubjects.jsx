@@ -12,6 +12,7 @@ import {
   deleteCourse
 } from '../api/operatorApi';
 import { Autocomplete, TextField, Chip } from '@mui/material';
+import Loader from '../components/Loader';
 import styles from './CoursesAndSubjects.module.css';
 
 function CoursesAndSubjects() {
@@ -20,6 +21,13 @@ function CoursesAndSubjects() {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Состояния загрузки для операций
+  const [creatingSubject, setCreatingSubject] = useState(false);
+  const [creatingCourse, setCreatingCourse] = useState(false);
+  const [updatingCourse, setUpdatingCourse] = useState(null); // ID обновляемого курса
+  const [deletingCourse, setDeletingCourse] = useState(null); // ID удаляемого курса
+  const [deletingSubject, setDeletingSubject] = useState(null); // { courseId, subjectId }
+  const [addingSubjects, setAddingSubjects] = useState(null); // ID курса, к которому добавляются предметы
   
   // Состояние для управления курсами и предметами
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -62,47 +70,55 @@ function CoursesAndSubjects() {
   const handleCreateSubject = async (e) => {
     e.preventDefault();
     if (!newSubjectName.trim()) {
-      alert('Введите название предмета');
       return;
     }
     try {
+      setCreatingSubject(true);
       await createSubject({ name: newSubjectName.trim() });
       setNewSubjectName('');
       await loadData();
-      alert('Предмет создан!');
     } catch (err) {
-      alert(err.message || 'Ошибка при создании предмета');
+      console.error('Ошибка при создании предмета:', err);
+      setError(err.message || 'Ошибка при создании предмета');
+    } finally {
+      setCreatingSubject(false);
     }
   };
 
   // Создание нового курса (автоматический номер)
   const handleCreateNewCourse = async () => {
     try {
+      setCreatingCourse(true);
       // Создаем курс с пустым массивом предметов (можно будет добавить позже)
       // Номер курса генерируется автоматически на бэкенде
       await createCourse({ subjectIds: [] });
       await loadData();
     } catch (err) {
-      alert(err.message || 'Ошибка при создании курса');
+      console.error('Ошибка при создании курса:', err);
+      setError(err.message || 'Ошибка при создании курса');
+    } finally {
+      setCreatingCourse(false);
     }
   };
 
   // Обновление курса (редактирование)
   const handleUpdateCourse = async (courseId) => {
     if (selectedSubjectsForCourse.length === 0) {
-      alert('Выберите хотя бы один предмет');
       return;
     }
     try {
+      setUpdatingCourse(courseId);
       await updateCourse(courseId, { 
         subjectIds: selectedSubjectsForCourse.map(s => s.id) 
       });
       setEditingCourse(null);
       setSelectedSubjectsForCourse([]);
       await loadData();
-      alert('Курс обновлён!');
     } catch (err) {
-      alert(err.message || 'Ошибка при обновлении курса');
+      console.error('Ошибка при обновлении курса:', err);
+      setError(err.message || 'Ошибка при обновлении курса');
+    } finally {
+      setUpdatingCourse(null);
     }
   };
 
@@ -110,11 +126,13 @@ function CoursesAndSubjects() {
   const handleDeleteCourse = async (courseId) => {
     if (!confirm('Удалить этот курс? Все предметы будут удалены из курса.')) return;
     try {
+      setDeletingCourse(courseId);
       await deleteCourse(courseId);
       await loadData();
-      alert('Курс удалён!');
     } catch (err) {
       alert(err.message || 'Ошибка при удалении курса');
+    } finally {
+      setDeletingCourse(null);
     }
   };
 
@@ -122,27 +140,32 @@ function CoursesAndSubjects() {
   const handleDeleteSubjectFromCourse = async (courseId, subjectId) => {
     if (!confirm('Удалить предмет из курса?')) return;
     try {
+      setDeletingSubject({ courseId, subjectId });
       await deleteSubjectFromCourse(courseId, subjectId);
       await loadData();
     } catch (err) {
       alert(err.message || 'Ошибка при удалении предмета');
+    } finally {
+      setDeletingSubject(null);
     }
   };
 
   // Добавление предметов к курсу
   const handleAddSubjectsToCourse = async (courseId) => {
     if (selectedSubjectsForCourse.length === 0) {
-      alert('Выберите хотя бы один предмет');
       return;
     }
     try {
+      setAddingSubjects(courseId);
       await addSubjectsToCourse(courseId, selectedSubjectsForCourse.map(s => s.id));
       setShowAddSubjectsModal(null);
       setSelectedSubjectsForCourse([]);
       await loadData();
-      alert('Предметы добавлены к курсу!');
     } catch (err) {
-      alert(err.message || 'Ошибка при добавлении предметов');
+      console.error('Ошибка при добавлении предметов:', err);
+      setError(err.message || 'Ошибка при добавлении предметов');
+    } finally {
+      setAddingSubjects(null);
     }
   };
 
@@ -211,9 +234,15 @@ function CoursesAndSubjects() {
                 style={{ flex: 1 }}
                 required
               />
-              <button type="submit" className={styles.submitButton} style={{ whiteSpace: 'nowrap' }}>
-                Создать предмет
+              <button 
+                type="submit" 
+                className={styles.submitButton} 
+                style={{ whiteSpace: 'nowrap' }}
+                disabled={creatingSubject}
+              >
+                {creatingSubject ? 'Создание...' : 'Создать предмет'}
               </button>
+              {creatingSubject && <Loader fullScreen message="Создание предмета..." />}
             </div>
           </div>
         </form>
@@ -227,9 +256,11 @@ function CoursesAndSubjects() {
             onClick={handleCreateNewCourse}
             className={styles.addButtonSmall}
             title="Добавить курс"
+            disabled={creatingCourse}
           >
-            +
+            {creatingCourse ? '⏳' : '+'}
           </button>
+          {creatingCourse && <Loader fullScreen message="Создание курса..." />}
         </div>
         <div className={styles.coursesList}>
           {courses.length === 0 ? (
@@ -246,14 +277,16 @@ function CoursesAndSubjects() {
                       <button
                         onClick={() => startEditCourse(course)}
                         className={styles.editButton}
+                        disabled={updatingCourse === course.id || deletingCourse === course.id}
                       >
                         ✏️ Редактировать
                       </button>
                       <button
                         onClick={() => handleDeleteCourse(course.id)}
                         className={styles.deleteButton}
+                        disabled={deletingCourse === course.id}
                       >
-                        🗑️ Удалить
+                        {deletingCourse === course.id ? '⏳' : '🗑️'} Удалить
                       </button>
                     </div>
                   </div>
@@ -374,15 +407,18 @@ function CoursesAndSubjects() {
                             setSelectedSubjectsForCourse([]);
                           }}
                           className={styles.cancelButton}
+                          disabled={updatingCourse === course.id}
                         >
                           Отмена
                         </button>
                         <button
                           onClick={() => handleUpdateCourse(course.id)}
                           className={styles.submitButton}
+                          disabled={updatingCourse === course.id}
                         >
-                          Сохранить изменения
+                          {updatingCourse === course.id ? 'Сохранение...' : 'Сохранить изменения'}
                         </button>
+                        {updatingCourse === course.id && <Loader fullScreen message="Обновление курса..." />}
                       </div>
                     </div>
                   )}
@@ -398,8 +434,10 @@ function CoursesAndSubjects() {
                           <button
                             onClick={() => handleDeleteSubjectFromCourse(course.id, subject.id)}
                             className={styles.deleteSubjectButton}
+                            disabled={deletingSubject?.courseId === course.id && deletingSubject?.subjectId === subject.id}
+                            title={deletingSubject?.courseId === course.id && deletingSubject?.subjectId === subject.id ? 'Удаление...' : 'Удалить предмет'}
                           >
-                            ×
+                            {deletingSubject?.courseId === course.id && deletingSubject?.subjectId === subject.id ? '⏳' : '×'}
                           </button>
                         </div>
                       ))
@@ -411,8 +449,9 @@ function CoursesAndSubjects() {
                     <button
                       onClick={() => openAddSubjectsModal(course)}
                       className={styles.addSubjectButton}
+                      disabled={addingSubjects === course.id || deletingCourse === course.id}
                     >
-                      + Добавить предмет
+                      {addingSubjects === course.id ? '⏳ Добавление...' : '+ Добавить предмет'}
                     </button>
                   )}
                 </div>
@@ -424,8 +463,9 @@ function CoursesAndSubjects() {
 
       {/* Модальное окно добавления предметов */}
       {showAddSubjectsModal && (
-        <div className={styles.modal} onClick={() => setShowAddSubjectsModal(null)}>
+        <div className={styles.modal} onClick={() => !addingSubjects && setShowAddSubjectsModal(null)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            {addingSubjects === showAddSubjectsModal && <Loader fullScreen message="Добавление предметов..." />}
             <h2 className={styles.modalTitle}>Добавить предметы к курсу</h2>
             <div className={styles.formGroup}>
               <label className={styles.label}>Выберите предметы</label>
@@ -540,14 +580,16 @@ function CoursesAndSubjects() {
                   setSelectedSubjectsForCourse([]);
                 }}
                 className={styles.cancelButton}
+                disabled={addingSubjects === showAddSubjectsModal}
               >
                 Отмена
               </button>
               <button
                 onClick={() => handleAddSubjectsToCourse(showAddSubjectsModal)}
                 className={styles.submitButton}
+                disabled={addingSubjects === showAddSubjectsModal}
               >
-                Добавить предметы
+                {addingSubjects === showAddSubjectsModal ? 'Добавление...' : 'Добавить предметы'}
               </button>
             </div>
           </div>
