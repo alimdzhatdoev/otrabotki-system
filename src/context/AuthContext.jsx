@@ -1,6 +1,6 @@
 // Компонент: Контекст авторизации для управления текущим пользователем
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { login as apiLogin, register as apiRegister, getMe, logout as apiLogout } from '../api/authApi';
+import { login as apiLogin, register as apiRegister, getMe, logout as apiLogout, firstSetup as apiFirstSetup } from '../api/authApi';
 
 const AuthContext = createContext(null);
 
@@ -41,12 +41,29 @@ export const AuthProvider = ({ children }) => {
   const login = async (loginValue, password) => {
     try {
       const response = await apiLogin(loginValue, password);
+      // Если требуется первый вход (установка пароля/курса), не сохраняем пользователя
+      if (response.needsSetup) {
+        return { success: false, needsSetup: true, user: response.user };
+      }
       setCurrentUser(response.user);
       return { success: true };
     } catch (error) {
       return { 
         success: false, 
         message: error.message || 'Неверный логин или пароль' 
+      };
+    }
+  };
+
+  const firstSetup = async ({ login: loginValue, oldPassword, newPassword, course }) => {
+    try {
+      const response = await apiFirstSetup({ login: loginValue, oldPassword, newPassword, course });
+      setCurrentUser(response.user);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Ошибка сохранения данных'
       };
     }
   };
@@ -74,6 +91,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     login,
+    firstSetup,
     register,
     logout,
     loading,

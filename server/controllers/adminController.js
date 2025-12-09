@@ -561,3 +561,77 @@ export async function getSlotStudentsForAdmin(req, res, next) {
   }
 }
 
+/**
+ * Импорт студентов из подготовленного массива
+ * POST /api/admin/students/import
+ * Ожидает: { students: [{ fio, recordBook, group }] }
+ */
+export async function importStudents(req, res, next) {
+  try {
+    const { students } = req.body || {};
+
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: 'Не передан список студентов' });
+    }
+
+    const users = await getUsers();
+    const updatedUsers = [...users];
+
+    let created = 0;
+    let updated = 0;
+
+    students.forEach(s => {
+      const fio = (s.fio || '').trim();
+      const recordBook = (s.recordBook || '').trim();
+      const group = (s.group || '').trim();
+
+      if (!fio || !recordBook || !group) {
+        return; // пропускаем некорректные строки
+      }
+
+      const login = recordBook;
+      const password = recordBook;
+      const existingIndex = updatedUsers.findIndex(
+        u => u.role === 'student' && (u.studentCardNumber === recordBook || u.login === login)
+      );
+
+      const baseStudent = {
+        role: 'student',
+        fio,
+        studentCardNumber: recordBook,
+        login,
+        password,
+        group,
+        course: null,
+        mustChangePassword: true,
+        mustSetCourse: true
+      };
+
+      if (existingIndex >= 0) {
+        updatedUsers[existingIndex] = {
+          ...updatedUsers[existingIndex],
+          ...baseStudent,
+          id: updatedUsers[existingIndex].id
+        };
+        updated += 1;
+      } else {
+        updatedUsers.push({
+          ...baseStudent,
+          id: generateId('s')
+        });
+        created += 1;
+      }
+    });
+
+    await saveUsers(updatedUsers);
+
+    res.json({
+      message: 'Импорт завершён',
+      created,
+      updated
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

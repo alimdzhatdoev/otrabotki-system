@@ -1,5 +1,6 @@
 // Компонент: Панель администратора с аналитикой и экспортом
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../context/AuthContext';
 import {
   getAnalytics,
@@ -12,7 +13,8 @@ import {
   exportData,
   importData,
   getTeacherSlots,
-  getSlotStudents
+  getSlotStudents,
+  importStudents
 } from '../api/adminApi';
 import { getCourses } from '../api/commonApi';
 import Loader from '../components/Loader';
@@ -33,13 +35,17 @@ function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+  const importStudentsInputRef = useRef(null);
   const [backupInfo, setBackupInfo] = useState(null);
   // Состояния загрузки для операций
   const [updatingLimits, setUpdatingLimits] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const [importingData, setImportingData] = useState(false);
+  const [importingStudents, setImportingStudents] = useState(false);
   const [updatingTeacher, setUpdatingTeacher] = useState(false);
   const [deletingTeacher, setDeletingTeacher] = useState(null); // ID удаляемого преподавателя
+  const [studentSearchQuery, setStudentSearchQuery] = useState(''); // Поиск студентов
+  const [studentSort, setStudentSort] = useState({ field: 'fio', direction: 'asc' }); // Сортировка студентов
   
   // Состояния для раскрывающихся списков в аналитике
   const [expandedTeachers, setExpandedTeachers] = useState(new Set()); // Set<teacherId>
@@ -169,11 +175,80 @@ function AdminSettings() {
   const exportStudents = () => {
     const data = students.map(s => ({
       'ФИО': s.fio,
-      'Логин': s.login,
+      'Номер зачетки': s.studentCardNumber || s.recordBook || s.login || '',
       'Группа': s.group,
       'Курс': courses.find(c => c.id === s.course)?.name || ''
     }));
     exportToCSV(data, 'students.csv');
+  };
+
+  // Кешируем количество заявок на студента
+  const requestCountsByStudent = useMemo(() => {
+    const map = {};
+    requests.forEach(r => {
+      map[r.studentId] = (map[r.studentId] || 0) + 1;
+    });
+    return map;
+  }, [requests]);
+
+  const handleStudentSort = (field) => {
+    setStudentSort(prev => {
+      if (prev.field === field) {
+        return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { field, direction: 'asc' };
+    });
+  };
+
+  const getSortIndicator = (field) => {
+    if (studentSort.field !== field) return '';
+    return studentSort.direction === 'asc' ? '▲' : '▼';
+  };
+
+  const getRecordBook = (student) => student.studentCardNumber || student.recordBook || student.login || '—';
+
+  // Импорт студентов (fio, recordBook, group)
+  const handleImportStudentsClick = () => {
+    importStudentsInputRef.current?.click();
+  };
+
+  const parseStudentsFromSheet = (sheet) => {
+    const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    return json
+      .map(row => {
+        const fio = (row.fio || row.FIO || row['ФИО'] || '').toString().trim();
+        const recordBook = (row.recordBook || row.RecordBook || row['recordBook'] || row['Recordbook'] || row['Номер зачетки'] || row['номер зачетки'] || '').toString().trim();
+        const group = (row.group || row.Group || row['Группа'] || '').toString().trim();
+        return { fio, recordBook, group };
+      })
+      .filter(r => r.fio && r.recordBook && r.group);
+  };
+
+  const handleImportStudentsFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setImportingStudents(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[firstSheetName];
+      const parsed = parseStudentsFromSheet(sheet);
+
+      if (parsed.length === 0) {
+        throw new Error('Не удалось прочитать студентов. Проверьте, что есть колонки fio, recordBook, group');
+      }
+
+      await importStudents(parsed);
+      await loadData();
+    } catch (err) {
+      console.error('Ошибка импорта студентов:', err);
+      setError(err.message || 'Ошибка импорта студентов');
+    } finally {
+      setImportingStudents(false);
+      e.target.value = '';
+    }
   };
 
   // Аналитика (из API)
@@ -858,34 +933,115 @@ function AdminSettings() {
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <h3 className={styles.cardTitle}>Список студентов</h3>
-              <button onClick={exportStudents} className={styles.exportButton}>
-                📥 Экспорт в CSV
-              </button>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={handleImportStudentsClick} className={styles.exportButton} disabled={importingStudents}>
+                  📤 Импорт (xlsx/csv)
+                </button>
+                <button onClick={exportStudents} className={styles.exportButton}>
+                  📥 Экспорт в CSV
+                </button>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  ref={importStudentsInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleImportStudentsFile}
+                />
+              </div>
             </div>
+            
+            {/* Поле поиска */}
+            <div style={{ marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="Поиск по ФИО, номеру зачетки, группе или курсу..."
+                value={studentSearchQuery}
+                onChange={(e) => setStudentSearchQuery(e.target.value)}
+                className={styles.input}
+                style={{ width: '100%', maxWidth: '500px' }}
+              />
+            </div>
+            
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>ФИО</th>
-                  <th>Логин</th>
-                  <th>Группа</th>
-                  <th>Курс</th>
-                  <th>Заявок</th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleStudentSort('fio')}>
+                    ФИО {getSortIndicator('fio')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleStudentSort('recordBook')}>
+                    Номер зачетки {getSortIndicator('recordBook')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleStudentSort('group')}>
+                    Группа {getSortIndicator('group')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleStudentSort('course')}>
+                    Курс {getSortIndicator('course')}
+                  </th>
+                  <th style={{ cursor: 'pointer' }} onClick={() => handleStudentSort('requests')}>
+                    Заявок {getSortIndicator('requests')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {students.map(student => {
-                  const studentRequests = requests.filter(r => r.studentId === student.id);
-                  
-                  return (
-                    <tr key={student.id}>
-                      <td>{student.fio}</td>
-                      <td><code>{student.login}</code></td>
-                      <td>{student.group}</td>
-                      <td>{courses.find(c => c.id === student.course)?.name}</td>
-                      <td>{studentRequests.length}</td>
-                    </tr>
-                  );
-                })}
+                {[...students]
+                  .filter(student => {
+                    if (!studentSearchQuery.trim()) return true;
+                    const query = studentSearchQuery.toLowerCase().trim();
+                    const fio = (student.fio || '').toLowerCase();
+                    const recordBook = (student.studentCardNumber || student.recordBook || student.login || '').toLowerCase();
+                    const group = (student.group || '').toLowerCase();
+                    const courseName = (courses.find(c => c.id === student.course)?.name || '').toLowerCase();
+                    
+                    return fio.includes(query) || 
+                           recordBook.includes(query) || 
+                           group.includes(query) || 
+                           courseName.includes(query);
+                  })
+                  .sort((a, b) => {
+                    const dir = studentSort.direction === 'asc' ? 1 : -1;
+                    const getCourseName = (student) => (courses.find(c => c.id === student.course)?.name || '');
+                    const recordA = getRecordBook(a).toLowerCase();
+                    const recordB = getRecordBook(b).toLowerCase();
+                    const groupA = (a.group || '').toLowerCase();
+                    const groupB = (b.group || '').toLowerCase();
+                    const courseA = getCourseName(a).toLowerCase();
+                    const courseB = getCourseName(b).toLowerCase();
+                    const fioA = (a.fio || '').toLowerCase();
+                    const fioB = (b.fio || '').toLowerCase();
+                    const reqA = requestCountsByStudent[a.id] || 0;
+                    const reqB = requestCountsByStudent[b.id] || 0;
+
+                    const compareString = (x, y) => x.localeCompare(y, 'ru', { sensitivity: 'base' }) * dir;
+                    const compareNumber = (x, y) => (x - y) * dir;
+
+                    switch (studentSort.field) {
+                      case 'recordBook':
+                        return compareString(recordA, recordB);
+                      case 'group':
+                        return compareString(groupA, groupB);
+                      case 'course':
+                        return compareString(courseA, courseB);
+                      case 'requests':
+                        return compareNumber(reqA, reqB);
+                      case 'fio':
+                      default:
+                        return compareString(fioA, fioB);
+                    }
+                  })
+                  .map(student => {
+                    const studentRequests = requests.filter(r => r.studentId === student.id);
+                    const recordBook = student.studentCardNumber || student.recordBook || student.login || '—';
+                    
+                    return (
+                      <tr key={student.id}>
+                        <td>{student.fio}</td>
+                        <td><code>{recordBook}</code></td>
+                        <td>{student.group}</td>
+                        <td>{courses.find(c => c.id === student.course)?.name || '—'}</td>
+                        <td>{studentRequests.length}</td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

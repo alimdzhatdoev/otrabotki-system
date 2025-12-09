@@ -154,3 +154,11 @@ export async function getSlotStudents(slotId) {
   return await get(`/admin/slots/${slotId}/students`);
 }
 
+/**
+ * Импорт студентов из массива данных
+ * @param {Array} students - [{ fio, recordBook, group }]
+ */
+export async function importStudents(students) {
+  return await post('/admin/students/import', { students });
+}
+

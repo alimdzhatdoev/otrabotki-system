@@ -23,6 +23,15 @@ export async function login(req, res, next) {
       return res.status(401).json({ error: 'Неверный логин или пароль' });
     }
 
+    // Проверка на первый вход для студента: логин == пароль и курс не указан
+    if (user.role === 'student' && user.login === user.password && (user.course === null || user.course === undefined)) {
+      const { password: _, ...userWithoutPassword } = user;
+      return res.status(200).json({
+        needsSetup: true,
+        user: userWithoutPassword
+      });
+    }
+
     // Создаём JWT токен
     const token = jwt.sign(
       { 
@@ -38,6 +47,62 @@ export async function login(req, res, next) {
     const { password: _, ...userWithoutPassword } = user;
     
     res.json({
+      token,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Первый вход студента: установка курса и нового пароля
+ * POST /api/auth/first-setup
+ */
+export async function firstSetup(req, res, next) {
+  try {
+    const { login: loginValue, oldPassword, newPassword, course } = req.body;
+
+    if (!loginValue || !oldPassword || !newPassword || course === undefined || course === null) {
+      return res.status(400).json({ error: 'Логин, старый пароль, новый пароль и курс обязательны' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Пароль должен содержать минимум 6 символов' });
+    }
+
+    const users = await getUsers();
+    const userIndex = users.findIndex(u => u.login === loginValue && u.password === oldPassword && u.role === 'student');
+
+    if (userIndex === -1) {
+      return res.status(401).json({ error: 'Неверный логин или пароль' });
+    }
+
+    const updatedUser = {
+      ...users[userIndex],
+      password: newPassword,
+      course: parseInt(course),
+      mustChangePassword: false,
+      mustSetCourse: false
+    };
+
+    users[userIndex] = updatedUser;
+    await saveUsers(users);
+
+    const token = jwt.sign(
+      { 
+        id: updatedUser.id, 
+        role: updatedUser.role,
+        login: updatedUser.login
+      },
+      config.jwtSecret,
+      { expiresIn: '7d' }
+    );
+
+    const { password: _, ...userWithoutPassword } = updatedUser;
+
+    res.json({
+      message: 'Данные обновлены',
       token,
       user: userWithoutPassword
     });
