@@ -94,7 +94,7 @@ function TeacherDashboard() {
     }
   };
 
-  // Проверка, находится ли текущее время в промежутке времени отработки
+  // Проверка, можно ли редактировать слот: с начала отработки и до конца текущего дня
   const isSlotTimeActive = (slot) => {
     const now = new Date();
     
@@ -110,19 +110,18 @@ function TeacherDashboard() {
       return false;
     }
     
-    // Парсим время начала и конца
+    // Парсим время начала
     const [hoursFrom, minutesFrom] = slot.timeFrom.split(':').map(Number);
-    const [hoursTo, minutesTo] = slot.timeTo.split(':').map(Number);
     
-    // Создаем объекты Date для времени начала и конца
+    // Создаем объект Date для времени начала
     const slotStart = new Date(today);
     slotStart.setHours(hoursFrom, minutesFrom, 0, 0);
     
-    const slotEnd = new Date(today);
-    slotEnd.setHours(hoursTo, minutesTo, 0, 0);
+    // Разрешаем редактирование с начала слота до конца текущего дня
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
     
-    // Проверяем, что текущее время в промежутке [время начала, время конца]
-    return now >= slotStart && now <= slotEnd;
+    return now >= slotStart && now <= endOfDay;
   };
 
   // Переключить посещаемость
@@ -325,7 +324,10 @@ function TeacherDashboard() {
             ) : (
               <div className={styles.slotsList}>
                 {mySlots.map(slot => {
-                  const course = courses.find(c => c.id === slot.courseId);
+                  // Формируем строку курсов: сначала новые courseIds, иначе fallback на courseId
+                  const courseNames = (slot.courses && slot.courses.length > 0)
+                    ? slot.courses.map(c => c.name).join(', ')
+                    : (courses.find(c => c.id === slot.courseId)?.name || '');
                   const stats = getSlotStats(slot);
                   const isExpanded = expandedSlot === slot.id;
                   const slotDate = new Date(slot.date);
@@ -342,7 +344,7 @@ function TeacherDashboard() {
                           <div className={styles.slotMeta}>
                             <span>📅 {new Date(slot.date).toLocaleDateString('ru-RU')}</span>
                             <span>🕐 {slot.timeFrom} - {slot.timeTo}</span>
-                            <span>📚 {course?.name}</span>
+                            <span>📚 {courseNames}</span>
                           </div>
                         </div>
                         
@@ -389,7 +391,9 @@ function TeacherDashboard() {
                                     <span className={styles.studentIcon}>🎓</span>
                                     <div className={styles.studentDetails}>
                                       <div className={styles.studentName}>{student.fio}</div>
-                                      <div className={styles.studentGroup}>Группа {student.group}</div>
+                                      <div className={styles.studentGroup}>
+                                        Группа {student.group}{student.course ? `, курс ${student.course.name}` : ''}
+                                      </div>
                                     </div>
                                   </div>
                                   

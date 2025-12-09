@@ -555,11 +555,42 @@ function OperatorSchedule() {
                   <label className={styles.label}>Курсы (можно выбрать несколько)</label>
                   <Autocomplete
                     multiple
+                    size="small"
                     options={courses}
                     getOptionLabel={(option) => option.name || ''}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     value={formData.selectedCourses}
                     onChange={handleCoursesChange}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: '#1A2140',
+                        color: '#FFFFFF',
+                        borderRadius: '12px',
+                        minHeight: '48px',
+                        padding: '0 10px',
+                        '& fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.04)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#5B5FFF',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#5B5FFF',
+                        },
+                      },
+                      '& .MuiAutocomplete-input': {
+                        padding: '12px 0',
+                      },
+                      '& .MuiAutocomplete-tag': {
+                        backgroundColor: '#5B5FFF',
+                        color: '#FFFFFF',
+                        height: '28px',
+                        borderRadius: '8px',
+                        '& .MuiChip-deleteIcon': {
+                          color: '#FFFFFF',
+                        },
+                      },
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -568,6 +599,9 @@ function OperatorSchedule() {
                           '& .MuiOutlinedInput-root': {
                             backgroundColor: '#1A2140',
                             color: '#FFFFFF',
+                            borderRadius: '12px',
+                            paddingRight: '8px',
+                            minHeight: '48px',
                             '& fieldset': {
                               borderColor: 'rgba(255, 255, 255, 0.04)',
                             },
@@ -580,6 +614,7 @@ function OperatorSchedule() {
                           },
                           '& .MuiInputBase-input': {
                             color: '#FFFFFF',
+                            padding: '12px 0',
                           },
                           '& .MuiInputBase-input::placeholder': {
                             color: 'rgba(255, 255, 255, 0.5)',

@@ -485,10 +485,21 @@ export async function getTeacherSlots(req, res, next) {
       .filter(slot => String(slot.teacherId) === String(teacherId))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(slot => {
-        const course = courses.find(c => c.id === slot.courseId);
+        // Для нового формата берем все курсы, для старого - один
+        let slotCourses = [];
+        if (slot.courseIds && Array.isArray(slot.courseIds) && slot.courseIds.length > 0) {
+          slotCourses = slot.courseIds
+            .map(id => courses.find(c => c.id === id))
+            .filter(Boolean);
+        } else if (slot.courseId) {
+          const course = courses.find(c => c.id === slot.courseId);
+          if (course) slotCourses = [course];
+        }
+        
         return {
           ...slot,
-          course: course ? { id: course.id, name: course.name } : null
+          course: slotCourses.length > 0 ? { id: slotCourses[0].id, name: slotCourses[0].name } : null,
+          courses: slotCourses.map(c => ({ id: c.id, name: c.name }))
         };
       });
 
@@ -514,6 +525,7 @@ export async function getSlotStudentsForAdmin(req, res, next) {
     }
 
     const users = await getUsers();
+    const courses = await getCourses();
     const attendance = await getAttendance();
 
     // Получаем студентов с их статусами посещаемости
@@ -522,11 +534,13 @@ export async function getSlotStudentsForAdmin(req, res, next) {
       const att = attendance.find(
         a => a.slotId === slotId && a.studentId === studentId
       );
+      const studentCourse = student?.course ? courses.find(c => c.id === student.course) : null;
 
       return {
         id: student?.id,
         fio: student?.fio,
         group: student?.group,
+        course: studentCourse ? { id: studentCourse.id, name: studentCourse.name } : null,
         attended: att?.attended || false,
         completed: att?.completed || false
       };

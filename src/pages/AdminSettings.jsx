@@ -432,6 +432,9 @@ function AdminSettings() {
                                       </thead>
                                       <tbody>
                                         {slots.map(slot => {
+                                          const courseNames = (slot.courses && slot.courses.length > 0)
+                                            ? slot.courses.map(c => c.name).join(', ')
+                                            : (slot.course?.name || '—');
                                           const isSlotExpanded = expandedSlots.has(slot.id);
                                           const slotData = slotStudents[slot.id];
                                           const isLoadingStudents = loadingSlotStudents.has(slot.id);
@@ -463,7 +466,7 @@ function AdminSettings() {
                                                   {slot.subject}
                                                 </td>
                                                 <td style={{ padding: '8px', color: '#FFFFFF' }}>
-                                                  {slot.course?.name || '—'}
+                                                  {courseNames}
                                                 </td>
                                                 <td style={{ padding: '8px', color: '#FFFFFF' }}>
                                                   {slot.students?.length || 0}/{slot.capacity}
@@ -519,7 +522,7 @@ function AdminSettings() {
                                                                     fontSize: '12px',
                                                                     marginTop: '2px'
                                                                   }}>
-                                                                    Группа {student.group}
+                                                                    Группа {student.group}{student.course ? `, курс ${student.course.name}` : ''}
                                                                   </div>
                                                                 </div>
                                                                 <div style={{ 

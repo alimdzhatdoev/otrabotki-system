@@ -4,5 +4,17 @@
     "studentId": "s_1764613223304_ac8j2ko8o",
     "attended": true,
     "completed": true
+  },
+  {
+    "slotId": "slot_1765284174506_n0v64tm1q",
+    "studentId": "s_1764613223304_ac8j2ko8o",
+    "attended": false,
+    "completed": false
+  },
+  {
+    "slotId": "slot_1765284174506_n0v64tm1q",
+    "studentId": "s_1764938157249_sv068txku",
+    "attended": false,
+    "completed": false
   }
 ]

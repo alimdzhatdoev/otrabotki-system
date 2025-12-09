@@ -28,41 +28,41 @@ export async function generateSlotsFromSchedules(weeksAhead = 4) {
     // Находим первый день недели для этого расписания
     const firstSlotDate = getNextDayOfWeek(schedule.dayOfWeek, today);
     
-    // Создаем слоты для каждого курса
-    for (const courseId of courseIds) {
-      for (let week = 0; week < weeksAhead; week++) {
-        // Вычисляем дату для каждой недели
-        const slotDate = new Date(firstSlotDate);
-        slotDate.setDate(firstSlotDate.getDate() + week * 7);
-        
-        // Пропускаем прошлые даты
-        if (slotDate < today) continue;
+    // Создаем один общий слот, доступный всем указанным курсам
+    for (let week = 0; week < weeksAhead; week++) {
+      // Вычисляем дату для каждой недели
+      const slotDate = new Date(firstSlotDate);
+      slotDate.setDate(firstSlotDate.getDate() + week * 7);
+      
+      // Пропускаем прошлые даты
+      if (slotDate < today) continue;
 
-        const dateStr = formatDate(slotDate);
+      const dateStr = formatDate(slotDate);
 
-        // Проверяем, нет ли уже такого слота
-        const existingSlot = existingSlots.find(s => 
-          s.date === dateStr &&
-          s.teacherId === schedule.teacherId &&
-          s.timeFrom === schedule.timeFrom &&
-          s.subject === schedule.subject &&
-          s.courseId === courseId
-        );
+      // Проверяем, нет ли уже такого слота (с тем же набором курсов)
+      const existingSlot = existingSlots.find(s => 
+        s.date === dateStr &&
+        s.teacherId === schedule.teacherId &&
+        s.timeFrom === schedule.timeFrom &&
+        s.subject === schedule.subject &&
+        JSON.stringify((s.courseIds && s.courseIds.length > 0 ? s.courseIds : (s.courseId ? [s.courseId] : [])).sort()) === JSON.stringify([...courseIds].sort())
+      );
 
-        if (!existingSlot) {
-          newSlots.push({
-            id: generateId('slot'),
-            scheduleId: schedule.id,
-            courseId: courseId,
-            subject: schedule.subject,
-            date: dateStr,
-            timeFrom: schedule.timeFrom,
-            timeTo: schedule.timeTo,
-            capacity: schedule.capacity,
-            teacherId: schedule.teacherId,
-            students: []
-          });
-        }
+      if (!existingSlot) {
+        newSlots.push({
+          id: generateId('slot'),
+          scheduleId: schedule.id,
+          // Для обратной совместимости сохраняем первый courseId, но основной массив в courseIds
+          courseId: courseIds[0] ?? null,
+          courseIds: courseIds,
+          subject: schedule.subject,
+          date: dateStr,
+          timeFrom: schedule.timeFrom,
+          timeTo: schedule.timeTo,
+          capacity: schedule.capacity,
+          teacherId: schedule.teacherId,
+          students: []
+        });
       }
     }
   }
@@ -95,27 +95,26 @@ export function generateSlotsFromSchedule(schedule, firstSlotDate, weeksAhead = 
     courseIds = [schedule.courseId];
   }
   
-  // Генерируем слоты на указанное количество недель для каждого курса
-  for (const courseId of courseIds) {
-    for (let week = 0; week < weeksAhead; week++) {
-      const slotDate = new Date(startDate);
-      slotDate.setDate(startDate.getDate() + week * 7);
-      
-      const dateStr = formatDate(slotDate);
-      
-      newSlots.push({
-        id: generateId('slot'),
-        scheduleId: schedule.id,
-        courseId: courseId,
-        subject: schedule.subject,
-        date: dateStr,
-        timeFrom: schedule.timeFrom,
-        timeTo: schedule.timeTo,
-        capacity: schedule.capacity,
-        teacherId: schedule.teacherId,
-        students: []
-      });
-    }
+  // Генерируем слоты на указанное количество недель (один слот с общим набором курсов)
+  for (let week = 0; week < weeksAhead; week++) {
+    const slotDate = new Date(startDate);
+    slotDate.setDate(startDate.getDate() + week * 7);
+    
+    const dateStr = formatDate(slotDate);
+    
+    newSlots.push({
+      id: generateId('slot'),
+      scheduleId: schedule.id,
+      courseId: courseIds[0] ?? null,
+      courseIds: courseIds,
+      subject: schedule.subject,
+      date: dateStr,
+      timeFrom: schedule.timeFrom,
+      timeTo: schedule.timeTo,
+      capacity: schedule.capacity,
+      teacherId: schedule.teacherId,
+      students: []
+    });
   }
   
   return newSlots;
